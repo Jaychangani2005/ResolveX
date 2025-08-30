@@ -5,6 +5,7 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
+    "fix-names": "node ./scripts/fix-generic-names.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

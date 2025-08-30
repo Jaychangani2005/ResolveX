@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { detectMangroveArea, getMangroveDetectionSummary, MangroveDetectionResult } from '@/services/mangroveDetectionService';
 
 interface PhotoCaptureProps {
   onPhotoSelected: (uri: string) => void;
@@ -13,15 +14,18 @@ interface PhotoCaptureProps {
     latitude: number;
     longitude: number;
     locationInfo: any;
+    mangroveResult?: MangroveDetectionResult;
   }) => void;
+  isUploading?: boolean;
 }
 
-export function PhotoCapture({ onPhotoSelected, onPhotoData }: PhotoCaptureProps) {
+export function PhotoCapture({ onPhotoSelected, onPhotoData, isUploading = false }: PhotoCaptureProps) {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [description, setDescription] = useState<string>('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [locationInfo, setLocationInfo] = useState<any>(null);
+  const [mangroveResult, setMangroveResult] = useState<MangroveDetectionResult | null>(null);
   const [isCapturingLocation, setIsCapturingLocation] = useState<boolean>(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -99,7 +103,24 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData }: PhotoCaptureProps
       console.log(`   currentLatitude: ${currentLatitude}`);
       console.log(`   currentLongitude: ${currentLongitude}`);
       
-      Alert.alert('Location Captured!', `GPS coordinates captured successfully!\nLatitude: ${lat.toFixed(6)}\nLongitude: ${lng.toFixed(6)}`);
+      // Perform mangrove detection with captured coordinates
+      const mangroveDetection = detectMangroveArea(lat, lng);
+      setMangroveResult(mangroveDetection);
+      
+      console.log('🌿 MANGROVE DETECTION RESULT:');
+      console.log(`   Is in mangrove area: ${mangroveDetection.isInMangroveArea}`);
+      if (mangroveDetection.isInMangroveArea) {
+        console.log(`   Region: ${mangroveDetection.regionName}`);
+      } else {
+        console.log(`   Nearest mangrove: ${mangroveDetection.regionName} (${mangroveDetection.distanceToNearestMangrove?.toFixed(2)} km away)`);
+      }
+      
+      // Show mangrove detection result to user
+      const mangroveSummary = getMangroveDetectionSummary(mangroveDetection);
+      Alert.alert(
+        'Location Captured!', 
+        `GPS coordinates captured successfully!\nLatitude: ${lat.toFixed(6)}\nLongitude: ${lng.toFixed(6)}\n\n${mangroveSummary}`
+      );
       
     } catch (error: any) {
       console.error('Location capture error:', error);
@@ -135,7 +156,8 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData }: PhotoCaptureProps
           description,
           latitude,
           longitude,
-          locationInfo
+          locationInfo,
+          mangroveResult
         });
       }
     }
@@ -167,7 +189,8 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData }: PhotoCaptureProps
           description,
           latitude,
           longitude,
-          locationInfo
+          locationInfo,
+          mangroveResult
         });
       }
     }
@@ -183,7 +206,8 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData }: PhotoCaptureProps
         description: text,
         latitude,
         longitude,
-        locationInfo
+        locationInfo,
+        mangroveResult
       });
     }
   };
@@ -194,6 +218,7 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData }: PhotoCaptureProps
     setLatitude(null);
     setLongitude(null);
     setLocationInfo(null);
+    setMangroveResult(null);
     onPhotoSelected('');
   };
 
@@ -221,6 +246,26 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData }: PhotoCaptureProps
                   <Text style={[styles.addressText, { color: colors.text }]}>
                     Address: {locationInfo.fullAddress}
                   </Text>
+                )}
+                
+                {/* Mangrove Detection Result */}
+                {mangroveResult && (
+                  <View style={styles.mangroveResultContainer}>
+                    <Text style={[styles.mangroveResultTitle, { color: colors.primary }]}>
+                      🌿 Mangrove Detection
+                    </Text>
+                    <Text style={[
+                      styles.mangroveResultText, 
+                      { 
+                        color: mangroveResult.isInMangroveArea ? colors.success || '#4CAF50' : colors.error || '#F44336' 
+                      }
+                    ]}>
+                      {mangroveResult.isInMangroveArea 
+                        ? `✅ Inside ${mangroveResult.regionName} mangrove area`
+                        : `❌ Not in mangrove area\n   Nearest: ${mangroveResult.regionName} (${mangroveResult.distanceToNearestMangrove?.toFixed(1)} km away)`
+                      }
+                    </Text>
+                  </View>
                 )}
               </View>
             ) : (
@@ -260,10 +305,17 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData }: PhotoCaptureProps
           </View>
 
           <TouchableOpacity 
-            style={[styles.changePhotoButton, { backgroundColor: colors.error }]}
+            style={[
+              styles.changePhotoButton, 
+              { backgroundColor: colors.error },
+              { opacity: isUploading ? 0.6 : 1 }
+            ]}
             onPress={clearPhoto}
+            disabled={isUploading}
           >
-            <Text style={styles.changePhotoText}>Clear Photo & Data</Text>
+            <Text style={styles.changePhotoText}>
+              {isUploading ? 'Uploading...' : 'Clear Photo & Data'}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       ) : (
@@ -400,5 +452,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  mangroveResultContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f0f8f0',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d4edda',
+  },
+  mangroveResultTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  mangroveResultText: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
   },
 }); 

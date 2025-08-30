@@ -9,7 +9,8 @@ import { ThemedView } from '@/components/ThemedView';
 import { IncidentReportCard } from '@/components/IncidentReportCard';
 import { getAllIncidentsForNGO } from '@/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
-import { IncidentReport } from '@/types/user';
+import { IncidentReport } from '@/services/firebaseService';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function NGODashboardScreen() {
   const [incidents, setIncidents] = useState<IncidentReport[]>([]);
@@ -39,28 +40,25 @@ export default function NGODashboardScreen() {
     setRefreshing(false);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
           style: 'destructive',
           onPress: async () => {
             try {
               await logout();
-              console.log('✅ NGO user logged out successfully');
+              router.replace('/login');
             } catch (error) {
-              console.error('❌ Logout error:', error);
+              console.error('Logout error:', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
-          },
-        },
+          }
+        }
       ]
     );
   };
@@ -93,7 +91,7 @@ export default function NGODashboardScreen() {
       {/* Header */}
       <ThemedView style={styles.header}>
         <View style={styles.headerTop}>
-          <View style={styles.headerLeft}>
+          <View style={styles.headerContent}>
             <ThemedText style={[styles.title, { color: colors.text }]}>
               🌿 NGO Dashboard
             </ThemedText>
@@ -101,12 +99,14 @@ export default function NGODashboardScreen() {
               Incident Reports Overview
             </ThemedText>
           </View>
-          <TouchableOpacity
-            style={[styles.logoutButton, { backgroundColor: colors.primary }]}
+          
+          {/* Logout Button */}
+          <TouchableOpacity 
+            style={[styles.logoutButton, { backgroundColor: 'rgba(220, 20, 60, 0.1)' }]}
             onPress={handleLogout}
-            activeOpacity={0.8}
           >
-            <Text style={styles.logoutButtonText}>🚪 Logout</Text>
+            <Ionicons name="log-out-outline" size={20} color="#DC143C" />
+            <ThemedText style={styles.logoutButtonText}>Logout</ThemedText>
           </TouchableOpacity>
         </View>
       </ThemedView>
@@ -188,8 +188,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  headerLeft: {
+  headerContent: {
     flex: 1,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DC143C',
+    marginLeft: 16,
+  },
+  logoutButtonText: {
+    color: '#DC143C',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   title: {
     fontSize: 28,
