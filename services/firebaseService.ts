@@ -1,130 +1,116 @@
 import { 
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { 
   collection, 
+  addDoc, 
+  setDoc,
+  doc, 
+  getDoc, 
+  getDocs, 
   query, 
+  where, 
   orderBy, 
   limit, 
-  getDocs,
-  addDoc,
+  updateDoc, 
   serverTimestamp,
-  where,
-  writeBatch,
-  runTransaction
+  deleteDoc
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { User, IncidentReport } from '@/types/user';
+import { auth, db, storage } from './firebaseConfig';
 
-export interface User {
-  id: string;
-  email: string;
-  password: string; // Store hashed password in Firestore
-  name: string;
-  role: 'user' | 'admin' | 'super_user';
-  points: number;
-  badge: string;
-  badgeEmoji: string;
-  createdAt: Date;
-  lastActive: Date;
-  isActive: boolean;
-  permissions: string[];
-  profileImage?: string;
-  phoneNumber?: string;
-  location?: {
-    city?: string;
-    state?: string;
-    country?: string;
-  };
-  preferences?: {
-    notifications: boolean;
-    emailUpdates: boolean;
-    language: string;
-  };
+// Define missing types locally
+interface LocationInfo {
+  latitude: number;
+  longitude: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  fullAddress?: string;
+  street?: string;
+  postalCode?: string;
 }
 
-export interface IncidentReport {
-  id: string;
-  userId: string;
-  userEmail: string;
-  userName: string;
-  photoUrl: string;
-  location: {
-    latitude: number;
-    longitude: number;
-    address?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    fullAddress?: string;
-  };
-  description: string;
-  status: 'pending' | 'reviewed' | 'resolved';
-  createdAt: Date;
-  updatedAt: Date;
+interface CommunityStats {
+  totalUsers: number;
+  totalIncidents: number;
+  totalPoints: number;
+  averagePointsPerUser: number;
 }
 
-export interface LeaderboardEntry {
-  id: string;
-  userId: string;
-  name: string;
-  points: number;
-  badge: string;
-  badgeEmoji: string;
-  lastActive: Date;
+interface AdminStats {
+  totalUsers: number;
+  adminUsers: number;
+  regularUsers: number;
+  totalIncidents: number;
+  pendingIncidents: number;
+  resolvedIncidents: number;
+  totalPoints: number;
+  averagePointsPerUser: number;
 }
 
-// Simple password hashing function (for production, use a proper hashing library)
-const hashPassword = (password: string): string => {
-  // This is a simple hash - in production, use bcrypt or similar
-  return btoa(password + 'mangrove-watch-salt');
-};
-
-// Simple password verification
-const verifyPassword = (password: string, hashedPassword: string): boolean => {
-  return hashPassword(password) === hashedPassword;
-};
-
-// User registration using only Firestore
-export const firebaseSignUp = async (
-  email: string, 
-  password: string, 
-  name: string
-): Promise<User> => {
+// Firebase sign in
+export const firebaseSignIn = async (email: string, password: string): Promise<User> => {
   try {
-    console.log('📝 Starting user signup process for:', email);
+    console.log('🔐 Firebase sign in started for:', email);
     
-    // Check if user already exists
-    const usersRef = collection(db, 'users');
-    const emailQuery = query(usersRef, where('email', '==', email));
-    const emailSnapshot = await getDocs(emailQuery);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
     
-    if (!emailSnapshot.empty) {
-      throw new Error('This email is already registered. Please sign in instead.');
+    console.log('🔐 Firebase authentication successful, fetching user profile...');
+    console.log('🔐 User UID:', firebaseUser.uid);
+    
+    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+    
+    if (!userDoc.exists()) {
+      console.error('❌ User document not found in Firestore for UID:', firebaseUser.uid);
+      console.error('❌ This usually means the user document was not created during signup');
+      throw new Error('User profile not found in database. Please contact support.');
     }
     
-    // Create user document ID (you can use email hash or generate UUID)
-    const userId = btoa(email).replace(/[^a-zA-Z0-9]/g, '');
+    const userData = userDoc.data() as User;
+    console.log('✅ User profile found:', userData);
+    console.log('✅ Firebase sign in successful for:', email);
     
-    // Create comprehensive user profile in Firestore users collection
-    const userProfile: Omit<User, 'id'> = {
-      email: email.trim(),
-      password: hashPassword(password),
+    return userData;
+  } catch (error: any) {
+    console.error('❌ Firebase sign in failed:', error);
+    throw error;
+  }
+};
+
+// Firebase sign up
+export const firebaseSignUp = async (email: string, password: string, name: string): Promise<User> => {
+  try {
+    console.log('📝 Firebase sign up started for:', email);
+    
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
+    
+    console.log('📝 Firebase user created with UID:', firebaseUser.uid);
+    
+    const userData: Omit<User, 'id'> = {
+      email: email.toLowerCase(),
       name: name.trim(),
       role: 'user',
       points: 0,
-      badge: 'Guardian',
+      badge: 'Newcomer',
       badgeEmoji: '🌱',
       createdAt: new Date(),
       lastActive: new Date(),
       isActive: true,
       permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard'],
-      profileImage: '',
-      phoneNumber: '',
+      profileImage: undefined,
+      phoneNumber: undefined,
       location: {
-        city: '',
-        state: '',
-        country: ''
+        city: undefined,
+        state: undefined,
+        country: undefined
       },
       preferences: {
         notifications: true,
@@ -133,412 +119,117 @@ export const firebaseSignUp = async (
       }
     };
     
-    // Use a transaction to ensure data consistency in users collection
-    await runTransaction(db, async (transaction) => {
-      const userRef = doc(db, 'users', userId);
-      
-      // Check if user document already exists
-      const userDoc = await transaction.get(userRef);
-      if (userDoc.exists()) {
-        throw new Error('User profile already exists');
-      }
-      
-      // Create user profile in users collection
-      transaction.set(userRef, userProfile);
-      
-      // Create user activity log entry
-      const activityRef = doc(collection(db, 'user_activities'));
-      transaction.set(activityRef, {
-        userId: userId,
-        action: 'user_created',
-        timestamp: serverTimestamp(),
-        details: {
-          email: email.trim(),
-          name: name.trim()
-        }
-      });
-      
-      console.log('✅ User profile and activity log created in transaction');
-    });
+    // Create user document with Firebase Auth UID as document ID
+    // This ensures the document ID matches what login will look for
+    await setDoc(doc(db, 'users', firebaseUser.uid), userData);
     
-    console.log('✅ User created successfully in users collection:', userId);
-    
-    return {
-      id: userId,
-      ...userProfile,
+    const newUser: User = {
+      id: firebaseUser.uid, // Use Firebase Auth UID as the ID
+      ...userData
     };
-  } catch (error: any) {
-    console.error('❌ Signup error:', error);
     
-    if (error.message.includes('already registered')) {
-      throw new Error('This email is already registered. Please sign in instead.');
-    } else if (error.message.includes('already exists')) {
-      throw new Error('User profile already exists. Please try again.');
-    } else {
-      throw new Error(error.message || 'Signup failed. Please try again.');
-    }
+    console.log('✅ Firebase sign up successful for:', email);
+    console.log('📝 User document created with UID:', firebaseUser.uid);
+    return newUser;
+  } catch (error: any) {
+    console.error('❌ Firebase sign up failed:', error);
+    throw error;
   }
 };
 
-// User sign in using only Firestore
-export const firebaseSignIn = async (
-  email: string, 
-  password: string
-): Promise<User> => {
-  try {
-    console.log('🔐 Starting sign in process for:', email);
-    
-    // Find user by email in users collection
-    const usersRef = collection(db, 'users');
-    const emailQuery = query(usersRef, where('email', '==', email));
-    const emailSnapshot = await getDocs(emailQuery);
-    
-    if (emailSnapshot.empty) {
-      throw new Error('No account found with this email. Please sign up first.');
-    }
-    
-    const userDoc = emailSnapshot.docs[0];
-    const userData = userDoc.data();
-    
-    // Verify password
-    if (!verifyPassword(password, userData.password)) {
-      throw new Error('Incorrect password. Please try again.');
-    }
-    
-    // Check if user is active
-    if (!userData.isActive) {
-      throw new Error('Account is deactivated. Please contact support.');
-    }
-    
-    console.log('✅ User authentication successful, updating last active time...');
-    
-    // Update last active time and create login activity log
-    try {
-      const batch = writeBatch(db);
-      
-      // Update last active time
-      batch.update(doc(db, 'users', userDoc.id), {
-        lastActive: new Date(),
-      });
-      
-      // Create login activity log
-      const activityRef = doc(collection(db, 'user_activities'));
-      batch.set(activityRef, {
-        userId: userDoc.id,
-        action: 'user_login',
-        timestamp: serverTimestamp(),
-        details: {
-          email: userData.email,
-          loginMethod: 'email_password'
-        }
-      });
-      
-      await batch.commit();
-      console.log('✅ User activity updated and login logged');
-    } catch (updateError) {
-      console.warn('⚠️ Could not update user activity:', updateError);
-      // Don't fail the entire sign-in if this update fails
-    }
-    
-    console.log('✅ User signed in successfully:', userData.email);
-    
-    return {
-      id: userDoc.id,
-      ...userData,
-      createdAt: userData.createdAt.toDate(),
-      lastActive: new Date(),
-    } as User;
-  } catch (error: any) {
-    console.error('❌ Signin error:', error);
-    
-    if (error.message.includes('No account found')) {
-      throw new Error('No account found with this email. Please sign up first.');
-    } else if (error.message.includes('Incorrect password')) {
-      throw new Error('Incorrect password. Please try again.');
-    } else if (error.message.includes('deactivated')) {
-      throw new Error('Account is deactivated. Please contact support.');
-    } else {
-      throw new Error(error.message || 'Sign in failed. Please try again.');
-    }
-  }
-};
-
-// Admin sign in using only Firestore
-export const adminSignIn = async (
-  email: string, 
-  password: string
-): Promise<User> => {
-  try {
-    console.log('🔐 Starting admin sign in process for:', email);
-    
-    // Find user by email in users collection
-    const usersRef = collection(db, 'users');
-    const emailQuery = query(usersRef, where('email', '==', email));
-    const emailSnapshot = await getDocs(emailQuery);
-    
-    if (emailSnapshot.empty) {
-      throw new Error('No admin account found with this email.');
-    }
-    
-    const userDoc = emailSnapshot.docs[0];
-    const userData = userDoc.data();
-    
-    // Verify password
-    if (!verifyPassword(password, userData.password)) {
-      throw new Error('Incorrect password. Please try again.');
-    }
-    
-    // Verify admin role
-    if (userData.role !== 'admin' && userData.role !== 'super_user') {
-      throw new Error('Access denied. This account is not authorized as admin.');
-    }
-    
-    // Check if user is active
-    if (!userData.isActive) {
-      throw new Error('Account is deactivated. Please contact system administrator.');
-    }
-    
-    console.log('✅ Admin authentication successful, updating last active time...');
-    
-    // Update last active time
-    try {
-      await updateDoc(doc(db, 'users', userDoc.id), {
-        lastActive: new Date(),
-      });
-      console.log('✅ Last active time updated');
-    } catch (updateError) {
-      console.warn('⚠️ Could not update last active time:', updateError);
-    }
-    
-    console.log('✅ Admin signed in successfully:', userData.email);
-    
-    return {
-      id: userDoc.id,
-      ...userData,
-      createdAt: userData.createdAt.toDate(),
-      lastActive: new Date(),
-    } as User;
-  } catch (error: any) {
-    console.error('❌ Admin signin error:', error);
-    
-    if (error.message.includes('No admin account')) {
-      throw new Error('No admin account found with this email.');
-    } else if (error.message.includes('Incorrect password')) {
-      throw new Error('Incorrect password. Please try again.');
-    } else if (error.message.includes('Access denied')) {
-      throw new Error('Access denied. This account is not authorized as admin.');
-    } else if (error.message.includes('deactivated')) {
-      throw new Error('Account is deactivated. Please contact system administrator.');
-    } else {
-      throw new Error(error.message || 'Admin sign in failed. Please try again.');
-    }
-  }
-};
-
-// Simple sign out (just clear local state)
+// Firebase sign out
 export const firebaseSignOut = async (): Promise<void> => {
   try {
-    console.log('🚪 User signing out');
-    // Since we're not using Firebase Auth, just log the action
-    // You'll need to handle local state clearing in your app
+    await signOut(auth);
+    console.log('✅ Firebase sign out successful');
   } catch (error: any) {
-    throw new Error(error.message);
+    console.error('❌ Firebase sign out failed:', error);
+    throw error;
   }
 };
 
-// Get current user from local storage or context (you'll implement this)
-export const getCurrentUser = (): User | null => {
-  // This should return the current user from your app's state management
-  // You'll need to implement this based on how you store user session
-  return null;
+// Get current user
+export const getCurrentUser = (): FirebaseUser | null => {
+  return auth.currentUser;
 };
 
-// Enhanced user profile management
-export const updateUserProfile = async (
-  userId: string,
-  updates: Partial<Omit<User, 'id' | 'email' | 'role' | 'createdAt'>>
-): Promise<void> => {
-  try {
-    console.log('📝 Updating user profile in users collection for:', userId);
-    
-    const userRef = doc(db, 'users', userId);
-    
-    // Verify user exists before updating
-    const userDoc = await getDoc(userRef);
-    if (!userDoc.exists()) {
-      throw new Error('User not found in users collection');
-    }
-    
-    // Update user profile
-    await updateDoc(userRef, {
-      ...updates,
-      lastActive: new Date(),
-    });
-    
-    console.log('✅ User profile updated successfully in users collection');
-  } catch (error: any) {
-    console.error('❌ Profile update error in users collection:', error);
-    throw new Error(error.message || 'Failed to update profile');
-  }
-};
-
-// Get user profile with enhanced error handling
+// Get user profile
 export const getUserProfile = async (userId: string): Promise<User | null> => {
   try {
-    console.log('🔍 Fetching user profile from users collection for:', userId);
-    
     const userDoc = await getDoc(doc(db, 'users', userId));
+    if (userDoc.exists()) {
+      return userDoc.data() as User;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    return null;
+  }
+};
+
+// Admin sign in
+export const adminSignIn = async (email: string, password: string): Promise<User> => {
+  try {
+    console.log('🔐 Admin sign in started for:', email);
     
-    if (!userDoc.exists()) {
-      console.log('⚠️ User profile not found in users collection for:', userId);
-      return null;
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
+    
+    const userProfile = await getUserProfile(firebaseUser.uid);
+    
+    if (!userProfile) {
+      throw new Error('User profile not found');
     }
     
-    const userData = userDoc.data();
-    console.log('✅ User profile loaded successfully from users collection');
-    
-    return {
-      id: userDoc.id,
-      ...userData,
-      createdAt: userData.createdAt.toDate(),
-      lastActive: userData.lastActive.toDate(),
-    } as User;
-  } catch (error: any) {
-    console.error('❌ Error loading user profile from users collection:', error);
-    throw new Error('Failed to load user profile. Please try again.');
-  }
-};
-
-// Get multiple users for admin purposes
-export const getUsers = async (userLimit: number = 100): Promise<User[]> => {
-  try {
-    console.log('🔍 Fetching users list from users collection, limit:', userLimit);
-    
-    const usersQuery = query(
-      collection(db, 'users'),
-      orderBy('createdAt', 'desc'),
-      limit(userLimit)
-    );
-    
-    const querySnapshot = await getDocs(usersQuery);
-    const users: User[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      users.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate(),
-        lastActive: data.lastActive.toDate(),
-      } as User);
-    });
-    
-    console.log(`✅ Loaded ${users.length} users successfully from users collection`);
-    return users;
-  } catch (error: any) {
-    console.error('❌ Error loading users from users collection:', error);
-    throw new Error('Failed to load users. Please try again.');
-  }
-};
-
-// Search users by name or email
-export const searchUsers = async (searchTerm: string): Promise<User[]> => {
-  try {
-    console.log('🔍 Searching users in users collection for term:', searchTerm);
-    
-    // Note: Firestore doesn't support full-text search natively
-    // This is a simple prefix search on name field
-    // For production, consider using Algolia or similar service
-    
-    const usersQuery = query(
-      collection(db, 'users'),
-      where('name', '>=', searchTerm),
-      where('name', '<=', searchTerm + '\uf8ff'),
-      limit(20)
-    );
-    
-    const querySnapshot = await getDocs(usersQuery);
-    const users: User[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      users.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate(),
-        lastActive: data.lastActive.toDate(),
-      } as User);
-    });
-    
-    console.log(`✅ Found ${users.length} users matching search term in users collection`);
-    return users;
-  } catch (error: any) {
-    console.error('❌ Error searching users in users collection:', error);
-    throw new Error('Failed to search users. Please try again.');
-  }
-};
-
-// User management functions
-export const updateUserPoints = async (
-  userId: string, 
-  points: number
-): Promise<void> => {
-  try {
-    const userRef = doc(db, 'users', userId);
-    const userDoc = await getDoc(userRef);
-    
-    if (!userDoc.exists()) {
-      throw new Error('User not found in users collection');
+    if (userProfile.role !== 'admin' && userProfile.role !== 'super_user') {
+      throw new Error('Access denied. Admin privileges required.');
     }
     
-    const userData = userDoc.data();
-    const newPoints = userData.points + points;
-    
-    // Determine badge based on points
-    let newBadge = userData.badge;
-    let newBadgeEmoji = userData.badgeEmoji;
-    
-    if (newPoints >= 2000 && userData.badge !== 'Master') {
-      newBadge = 'Master';
-      newBadgeEmoji = '👑';
-    } else if (newPoints >= 1000 && userData.badge !== 'Protector') {
-      newBadge = 'Protector';
-      newBadgeEmoji = '🌳';
-    }
-    
-    await updateDoc(userRef, {
-      points: newPoints,
-      badge: newBadge,
-      badgeEmoji: newBadgeEmoji,
-      lastActive: new Date(),
-    });
-    
-    console.log('✅ User points updated successfully in users collection');
+    console.log('✅ Admin sign in successful for:', email);
+    return userProfile;
   } catch (error: any) {
-    console.error('❌ Error updating user points in users collection:', error);
-    throw new Error(error.message);
+    console.error('❌ Admin sign in failed:', error);
+    throw error;
   }
 };
 
-// Incident reporting functions
+// Update user profile
+export const updateUserProfile = async (userId: string, updates: Partial<Omit<User, 'id' | 'email' | 'role' | 'createdAt'>>): Promise<void> => {
+  try {
+    console.log('📝 Updating user profile for:', userId);
+    
+    const updateData = {
+      ...updates,
+      updatedAt: new Date()
+    };
+    
+    await updateDoc(doc(db, 'users', userId), updateData);
+    
+    console.log('✅ User profile updated successfully');
+  } catch (error: any) {
+    console.error('❌ Profile update failed:', error);
+    throw error;
+  }
+};
+
+// Submit incident report
 export const submitIncidentReport = async (
   userId: string,
   userEmail: string,
   userName: string,
   photoUrl: string,
-  location: { 
-    latitude: number; 
-    longitude: number;
-    address?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    fullAddress?: string;
-  },
+  location: LocationInfo,
   description: string
 ): Promise<string> => {
   try {
     console.log('📝 Submitting incident report for user:', userId);
+    console.log('📍 LOCATION DATA RECEIVED:');
+    console.log(`   Latitude: ${location.latitude}`);
+    console.log(`   Longitude: ${location.longitude}`);
+    
+    if (!location.latitude || !location.longitude) {
+      throw new Error('Invalid location coordinates. Latitude and longitude are required.');
+    }
     
     const incidentData: Omit<IncidentReport, 'id' | 'createdAt' | 'updatedAt'> = {
       userId,
@@ -550,257 +241,142 @@ export const submitIncidentReport = async (
       status: 'pending',
     };
     
-    // Add incident to Firestore
-    const docRef = await addDoc(collection(db, 'incidents'), {
+    console.log('📊 INCIDENT DATA PREPARED FOR FIRESTORE:', incidentData);
+    
+    const incidentRef = await addDoc(collection(db, 'incidents'), {
       ...incidentData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
     
-    console.log('✅ Incident report submitted successfully:', docRef.id);
+    console.log('✅ Incident report submitted successfully to Firestore:', incidentRef.id);
     
-    // Award points for submitting incident report
-    try {
-      await updateUserPoints(userId, 50);
-      console.log('🎉 Points awarded successfully');
-    } catch (pointsError) {
-      console.warn('⚠️ Could not award points:', pointsError);
-      // Don't fail the entire submission if points can't be awarded
-    }
-    
-    return docRef.id;
+    return incidentRef.id;
   } catch (error: any) {
     console.error('❌ Incident report submission failed:', error);
-    
-    // Handle specific Firestore errors
-    if (error.code === 'permission-denied') {
-      throw new Error('Permission denied. Please check your account status.');
-    } else if (error.code === 'unavailable') {
-      throw new Error('Service temporarily unavailable. Please try again.');
-    } else {
-      throw new Error(error.message || 'Failed to submit incident report. Please try again.');
-    }
+    throw error;
   }
 };
 
-export const getUserIncidents = async (userId: string): Promise<IncidentReport[]> => {
+// Get community stats
+export const getCommunityStats = async (): Promise<CommunityStats> => {
   try {
-    const incidentsQuery = query(
-      collection(db, 'incidents'),
-      orderBy('createdAt', 'desc')
-    );
+    console.log('📊 Fetching community stats...');
     
-    const querySnapshot = await getDocs(incidentsQuery);
-    const incidents: IncidentReport[] = [];
+    const [usersSnapshot, incidentsSnapshot] = await Promise.all([
+      getDocs(collection(db, 'users')),
+      getDocs(collection(db, 'incidents'))
+    ]);
     
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.userId === userId) {
-        incidents.push({
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-        } as IncidentReport);
-      }
-    });
-    
-    return incidents;
-  } catch (error: any) {
-    throw new Error(error.message);
-  }
-};
-
-// Leaderboard functions
-export const getLeaderboard = async (leaderboardLimit: number = 50): Promise<LeaderboardEntry[]> => {
-  try {
-    const usersQuery = query(
-      collection(db, 'users'),
-      orderBy('points', 'desc'),
-      limit(leaderboardLimit)
-    );
-    
-    const querySnapshot = await getDocs(usersQuery);
-    const leaderboard: LeaderboardEntry[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      leaderboard.push({
-        id: doc.id,
-        userId: doc.id,
-        name: data.name,
-        points: data.points,
-        badge: data.badge,
-        badgeEmoji: data.badgeEmoji,
-        lastActive: data.lastActive.toDate(),
-      } as LeaderboardEntry);
-    });
-    
-    console.log('✅ Leaderboard loaded from users collection');
-    
-    return leaderboard;
-  } catch (error: any) {
-    console.error('❌ Error loading leaderboard from users collection:', error);
-    throw new Error(error.message);
-  }
-};
-
-export const getCommunityStats = async (): Promise<{
-  totalUsers: number;
-  totalIncidents: number;
-  totalPoints: number;
-}> => {
-  try {
-    const usersSnapshot = await getDocs(collection(db, 'users'));
-    const incidentsSnapshot = await getDocs(collection(db, 'incidents'));
+    const totalUsers = usersSnapshot.size;
+    const totalIncidents = incidentsSnapshot.size;
     
     let totalPoints = 0;
     usersSnapshot.forEach((doc) => {
-      totalPoints += doc.data().points || 0;
+      const userData = doc.data();
+      totalPoints += userData.points || 0;
     });
     
-    console.log('✅ Community stats loaded from users collection');
-    
-    return {
-      totalUsers: usersSnapshot.size,
-      totalIncidents: incidentsSnapshot.size,
+    const stats: CommunityStats = {
+      totalUsers,
+      totalIncidents,
       totalPoints,
+      averagePointsPerUser: totalUsers > 0 ? Math.round(totalPoints / totalUsers) : 0
     };
+    
+    console.log('✅ Community stats fetched successfully:', stats);
+    return stats;
   } catch (error: any) {
-    console.error('❌ Error loading community stats from users collection:', error);
-    throw new Error(error.message);
+    console.error('❌ Error fetching community stats:', error);
+    throw error;
   }
 };
 
-// Admin statistics function
-export const getAdminStats = async (): Promise<{
-  totalUsers: number;
-  totalReports: number;
-  pendingReports: number;
-  approvedReports: number;
-  rejectedReports: number;
-  totalAdmins: number;
-  activeUsers: number;
-}> => {
+// Get admin stats
+export const getAdminStats = async (): Promise<AdminStats> => {
   try {
-    const usersSnapshot = await getDocs(collection(db, 'users'));
-    const incidentsSnapshot = await getDocs(collection(db, 'incidents'));
+    console.log('📊 Fetching admin stats...');
     
-    let totalAdmins = 0;
-    let activeUsers = 0;
+    const [usersSnapshot, incidentsSnapshot] = await Promise.all([
+      getDocs(collection(db, 'users')),
+      getDocs(collection(db, 'incidents'))
+    ]);
+    
+    const totalUsers = usersSnapshot.size;
+    const totalIncidents = incidentsSnapshot.size;
+    
+    let adminUsers = 0;
+    let regularUsers = 0;
     let totalPoints = 0;
     
     usersSnapshot.forEach((doc) => {
       const userData = doc.data();
-      totalPoints += userData.points || 0;
-      
       if (userData.role === 'admin' || userData.role === 'super_user') {
-        totalAdmins++;
+        adminUsers++;
+      } else {
+        regularUsers++;
       }
-      
-      // Consider users active if they've been active in the last 7 days
-      const lastActive = userData.lastActive?.toDate();
-      if (lastActive && (new Date().getTime() - lastActive.getTime()) < 7 * 24 * 60 * 60 * 1000) {
-        activeUsers++;
-      }
+      totalPoints += userData.points || 0;
     });
     
-    let pendingReports = 0;
-    let approvedReports = 0;
-    let rejectedReports = 0;
+    let pendingIncidents = 0;
+    let resolvedIncidents = 0;
     
     incidentsSnapshot.forEach((doc) => {
       const incidentData = doc.data();
-      switch (incidentData.status) {
-        case 'pending':
-          pendingReports++;
-          break;
-        case 'approved':
-          approvedReports++;
-          break;
-        case 'rejected':
-          rejectedReports++;
-          break;
+      if (incidentData.status === 'pending') {
+        pendingIncidents++;
+      } else if (incidentData.status === 'resolved') {
+        resolvedIncidents++;
       }
     });
     
-    console.log('✅ Admin stats loaded from users collection');
-    
-    return {
-      totalUsers: usersSnapshot.size,
-      totalReports: incidentsSnapshot.size,
-      pendingReports,
-      approvedReports,
-      rejectedReports,
-      totalAdmins,
-      activeUsers,
+    const stats: AdminStats = {
+      totalUsers,
+      adminUsers,
+      regularUsers,
+      totalIncidents,
+      pendingIncidents,
+      resolvedIncidents,
+      totalPoints,
+      averagePointsPerUser: totalUsers > 0 ? Math.round(totalPoints / totalUsers) : 0
     };
+    
+    console.log('✅ Admin stats fetched successfully:', stats);
+    return stats;
   } catch (error: any) {
-    console.error('❌ Error loading admin stats from users collection:', error);
-    throw new Error(error.message);
+    console.error('❌ Error fetching admin stats:', error);
+    throw error;
   }
 };
 
-// Function to create admin user (for super users only) - using only Firestore
-export const createAdminUser = async (
-  email: string,
-  password: string,
-  name: string,
-  role: 'admin' | 'super_user'
-): Promise<User> => {
+// Create admin user
+export const createAdminUser = async (email: string, password: string, name: string): Promise<User> => {
   try {
-    console.log('🔐 Creating admin user:', email, 'Role:', role);
+    console.log('👑 Creating admin user:', email);
     
-    // Check if user already exists
-    const usersRef = collection(db, 'users');
-    const emailQuery = query(usersRef, where('email', '==', email));
-    const emailSnapshot = await getDocs(emailQuery);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
     
-    if (!emailSnapshot.empty) {
-      throw new Error('This email is already registered.');
-    }
+    console.log('👑 Firebase admin user created with UID:', firebaseUser.uid);
     
-    // Create user document ID
-    const userId = btoa(email).replace(/[^a-zA-Z0-9]/g, '');
-    
-    // Create admin profile in users collection
-    const adminProfile: Omit<User, 'id'> = {
-      email: email.trim(),
-      password: hashPassword(password),
+    const adminUserData: Omit<User, 'id'> = {
+      email: email.toLowerCase(),
       name: name.trim(),
-      role: role,
+      role: 'admin',
       points: 0,
-      badge: 'Admin',
-      badgeEmoji: role === 'super_user' ? '👑' : '🛡️',
+      badge: 'Administrator',
+      badgeEmoji: '👑',
       createdAt: new Date(),
       lastActive: new Date(),
       isActive: true,
-      permissions: role === 'super_user' 
-        ? [
-            'manage_users',
-            'manage_admins',
-            'view_reports',
-            'approve_reports',
-            'reject_reports',
-            'manage_leaderboard',
-            'view_analytics',
-            'system_settings',
-            'delete_users',
-            'ban_users'
-          ]
-        : [
-            'manage_users',
-            'view_reports',
-            'approve_reports',
-            'manage_leaderboard',
-            'view_analytics'
-          ],
-      profileImage: '',
-      phoneNumber: '',
+      permissions: ['manage_users', 'view_reports', 'approve_reports', 'manage_leaderboard', 'view_analytics'],
+      profileImage: undefined,
+      phoneNumber: undefined,
       location: {
-        city: '',
-        state: '',
-        country: ''
+        city: undefined,
+        state: undefined,
+        country: undefined
       },
       preferences: {
         notifications: true,
@@ -809,21 +385,161 @@ export const createAdminUser = async (
       }
     };
     
-    await setDoc(doc(db, 'users', userId), adminProfile);
+    // Create admin user document with Firebase Auth UID as document ID
+    await setDoc(doc(db, 'users', firebaseUser.uid), adminUserData);
     
-    console.log('✅ Admin user created successfully in users collection:', userId);
-    
-    return {
-      id: userId,
-      ...adminProfile,
+    const newAdminUser: User = {
+      id: firebaseUser.uid, // Use Firebase Auth UID as the ID
+      ...adminUserData
     };
-  } catch (error: any) {
-    console.error('❌ Admin user creation error:', error);
     
-    if (error.message.includes('already registered')) {
-      throw new Error('This email is already registered.');
-    } else {
-      throw new Error(error.message || 'Admin user creation failed. Please try again.');
+    console.log('✅ Admin user created successfully:', email);
+    console.log('📝 Admin user document created with UID:', firebaseUser.uid);
+    return newAdminUser;
+  } catch (error: any) {
+    console.error('❌ Admin user creation failed:', error);
+    throw error;
+  }
+};
+
+// Get users
+export const getUsers = async (limitCount: number = 50): Promise<User[]> => {
+  try {
+    console.log('👥 Fetching users with limit:', limitCount);
+    
+    const usersQuery = query(
+      collection(db, 'users'),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
+    );
+    
+    const usersSnapshot = await getDocs(usersQuery);
+    const users: User[] = [];
+    
+    usersSnapshot.forEach((doc) => {
+      const userData = doc.data() as User;
+      users.push({
+        ...userData,
+        id: doc.id
+      });
+    });
+    
+    console.log(`✅ Fetched ${users.length} users successfully`);
+    return users;
+  } catch (error: any) {
+    console.error('❌ Error fetching users:', error);
+    throw error;
+  }
+};
+
+// Get user incidents
+export const getUserIncidents = async (userId: string, limitCount: number = 20): Promise<IncidentReport[]> => {
+  try {
+    console.log('📋 Fetching incidents for user:', userId);
+    
+    const incidentsQuery = query(
+      collection(db, 'incidents'),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
+    );
+    
+    const incidentsSnapshot = await getDocs(incidentsQuery);
+    const incidents: IncidentReport[] = [];
+    
+    incidentsSnapshot.forEach((doc) => {
+      const incidentData = doc.data() as IncidentReport;
+      incidents.push({
+        ...incidentData,
+        id: doc.id
+      });
+    });
+    
+    console.log(`✅ Fetched ${incidents.length} incidents for user ${userId}`);
+    return incidents;
+  } catch (error: any) {
+    console.error('❌ Error fetching user incidents:', error);
+    throw error;
+  }
+}; 
+
+// Helper function to migrate existing users (run this once to fix existing data)
+export const migrateExistingUsers = async (): Promise<void> => {
+  try {
+    console.log('🔄 Starting user migration...');
+    
+    // Get all existing users
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    let migratedCount = 0;
+    
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+      const docId = userDoc.id;
+      
+      // Check if this is an auto-generated ID (not a Firebase Auth UID)
+      if (docId.length === 20 && !docId.includes('@')) {
+        console.log(`🔄 Migrating user: ${userData.email} (${docId})`);
+        
+        try {
+          // Try to find the user by email in Firebase Auth
+          // Note: This is a simplified approach - in production you might want to handle this differently
+          
+          // For now, we'll create a new document with the correct structure
+          // and mark the old one for deletion
+          const newUserData = {
+            ...userData,
+            migratedFrom: docId,
+            migratedAt: new Date()
+          };
+          
+          // Create new document with email as ID (temporary solution)
+          const emailKey = userData.email.replace(/[.@]/g, '_');
+          await setDoc(doc(db, 'users', emailKey), newUserData);
+          
+          // Mark old document for deletion
+          await updateDoc(doc(db, 'users', docId), {
+            _deleted: true,
+            _deletedAt: new Date(),
+            _migratedTo: emailKey
+          });
+          
+          migratedCount++;
+          console.log(`✅ Migrated user: ${userData.email}`);
+        } catch (error) {
+          console.error(`❌ Failed to migrate user ${userData.email}:`, error);
+        }
+      }
     }
+    
+    console.log(`✅ Migration complete! Migrated ${migratedCount} users.`);
+    console.log('⚠️  Note: Old documents are marked for deletion. You may want to clean them up manually.');
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    throw error;
+  }
+};
+
+// Function to clean up deleted/migrated users
+export const cleanupDeletedUsers = async (): Promise<void> => {
+  try {
+    console.log('🧹 Cleaning up deleted users...');
+    
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    let deletedCount = 0;
+    
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+      
+      if (userData._deleted) {
+        console.log(`🗑️  Deleting migrated user: ${userData.email}`);
+        await deleteDoc(doc(db, 'users', userDoc.id));
+        deletedCount++;
+      }
+    }
+    
+    console.log(`✅ Cleanup complete! Deleted ${deletedCount} migrated users.`);
+  } catch (error) {
+    console.error('❌ Cleanup failed:', error);
+    throw error;
   }
 }; 

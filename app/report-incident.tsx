@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Text, TextInput, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
@@ -11,47 +11,111 @@ import { FormInput } from '@/components/FormInput';
 import { submitIncidentReport } from '@/services/firebaseService';
 import { LocationInfo } from '@/services/locationService';
 import { useAuth } from '@/contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
+
+interface PhotoData {
+  uri: string;
+  description: string;
+  latitude: number;
+  longitude: number;
+  locationInfo: any;
+}
 
 export default function ReportIncidentScreen() {
   const [description, setDescription] = useState('');
   const [photoUri, setPhotoUri] = useState('');
+  const [photoData, setPhotoData] = useState<PhotoData | null>(null);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
-  const handlePhotoSelected = (uri: string) => {
+  // Memoized handlers to prevent unnecessary re-renders
+  const handlePhotoSelected = useCallback((uri: string) => {
     setPhotoUri(uri);
-  };
+  }, []);
 
-  const handleLocationCaptured = (loc: { latitude: number; longitude: number } | null) => {
+  const handlePhotoData = useCallback((data: PhotoData) => {
+    setPhotoData(data);
+    setPhotoUri(data.uri);
+    
+    // Print photo data to terminal/console
+    console.log('📸 PHOTO DATA UPDATED:');
+    console.log(`   Photo URI: ${data.uri}`);
+    console.log(`   Description: ${data.description}`);
+    console.log(`   Latitude: ${data.latitude}`);
+    console.log(`   Longitude: ${data.longitude}`);
+    console.log(`   Location Info:`, data.locationInfo);
+    
+    // Store coordinates in separate variables
+    const photoLatitude = data.latitude;
+    const photoLongitude = data.longitude;
+    
+    console.log('📸 STORED PHOTO COORDINATE VARIABLES:');
+    console.log(`   photoLatitude: ${photoLatitude}`);
+    console.log(`   photoLongitude: ${photoLongitude}`);
+  }, []);
+
+  const handleLocationCaptured = useCallback((loc: { latitude: number; longitude: number } | null) => {
     setLocation(loc);
-  };
+    
+    if (loc) {
+      console.log('📍 LOCATION CAPTURED IN REPORT:');
+      console.log(`   Latitude: ${loc.latitude}`);
+      console.log(`   Longitude: ${loc.longitude}`);
+    }
+  }, []);
 
-  const handleLocationInfo = (info: LocationInfo | null) => {
+  const handleLocationInfo = useCallback((info: LocationInfo | null) => {
     setLocationInfo(info);
-  };
+    
+    if (info) {
+      console.log('📍 LOCATION INFO UPDATED:');
+      console.log(`   Full Address: ${info.fullAddress}`);
+      console.log(`   City: ${info.city}`);
+      console.log(`   State: ${info.state}`);
+      console.log(`   Country: ${info.country}`);
+    }
+  }, []);
 
-  const handleSubmit = async () => {
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/login');
+          }
+        }
+      ]
+    );
+  }, [logout]);
+
+  const handleSubmit = useCallback(async () => {
     if (!user) {
       Alert.alert('Error', 'You must be logged in to submit reports.');
       return;
     }
 
-    if (!photoUri) {
-      Alert.alert('Photo Required', 'Please take or upload a photo to continue.');
+    if (!photoUri || !photoData) {
+      Alert.alert('Photo Required', 'Please take or upload a photo with description to continue.');
       return;
     }
 
-    if (!location) {
-      Alert.alert('Location Required', 'Please capture GPS location to continue.');
+    if (!photoData.latitude || !photoData.longitude) {
+      Alert.alert('Location Required', 'Please ensure GPS location is captured with the photo.');
       return;
     }
 
-    if (!description.trim()) {
+    if (!photoData.description.trim()) {
       Alert.alert('Description Required', 'Please enter a description of the incident.');
       return;
     }
@@ -59,10 +123,19 @@ export default function ReportIncidentScreen() {
     setIsSubmitting(true);
 
     try {
-      // Submit to Firebase with enhanced location data
+      // Prepare enhanced location data combining photo location and additional location info
       const enhancedLocation = {
-        ...location,
+        latitude: photoData.latitude,
+        longitude: photoData.longitude,
+        ...(photoData.locationInfo && {
+          address: photoData.locationInfo.street,
+          city: photoData.locationInfo.city,
+          state: photoData.locationInfo.state,
+          country: photoData.locationInfo.country,
+          fullAddress: photoData.locationInfo.fullAddress,
+        }),
         ...(locationInfo && {
+          // Override with more detailed location info if available
           address: locationInfo.address,
           city: locationInfo.city,
           state: locationInfo.state,
@@ -70,24 +143,40 @@ export default function ReportIncidentScreen() {
           fullAddress: locationInfo.fullAddress,
         }),
       };
-      
-      await submitIncidentReport(
+
+      // Print final location data to terminal
+      console.log('📍 FINAL LOCATION DATA FOR FIRESTORE:');
+      console.log(`   Latitude: ${enhancedLocation.latitude}`);
+      console.log(`   Longitude: ${enhancedLocation.longitude}`);
+      console.log(`   Full Address: ${enhancedLocation.fullAddress}`);
+      console.log(`   City: ${enhancedLocation.city}`);
+      console.log(`   State: ${enhancedLocation.state}`);
+      console.log(`   Country: ${enhancedLocation.country}`);
+
+      // Submit to Firebase with enhanced location data
+      const reportId = await submitIncidentReport(
         user.id,
         user.email,
         user.name,
         photoUri, // In a real app, you'd upload this to Firebase Storage first
         enhancedLocation,
-        description.trim()
+        photoData.description.trim()
       );
       
+      console.log('✅ INCIDENT REPORT SUBMITTED TO FIRESTORE:');
+      console.log(`   Report ID: ${reportId}`);
+      console.log(`   User ID: ${user.id}`);
+      console.log(`   Photo Description: ${photoData.description}`);
+      console.log(`   Location: ${enhancedLocation.latitude}, ${enhancedLocation.longitude}`);
+
       // Show location details in success message
-      const locationDetails = locationInfo 
-        ? `\n\n📍 Location: ${locationInfo.fullAddress}`
-        : `\n\n📍 Coordinates: ${location?.latitude.toFixed(6)}, ${location?.longitude.toFixed(6)}`;
+      const locationDetails = enhancedLocation.fullAddress 
+        ? `\n\n📍 Location: ${enhancedLocation.fullAddress}`
+        : `\n\n📍 Coordinates: ${enhancedLocation.latitude.toFixed(6)}, ${enhancedLocation.longitude.toFixed(6)}`;
       
       Alert.alert(
         'Success!',
-        `Your incident report has been submitted successfully. You earned 50 points! Thank you for helping protect our mangrove ecosystems!${locationDetails}`,
+        `Your incident report has been submitted successfully. You earned 10 points! Thank you for helping protect our mangrove ecosystems!${locationDetails}`,
         [
           {
             text: 'OK',
@@ -95,6 +184,7 @@ export default function ReportIncidentScreen() {
               // Reset form and go back to home
               setDescription('');
               setPhotoUri('');
+              setPhotoData(null);
               setLocation(null);
               setLocationInfo(null);
               router.back();
@@ -103,13 +193,17 @@ export default function ReportIncidentScreen() {
         ]
       );
     } catch (error: any) {
+      console.error('❌ SUBMISSION ERROR:', error);
       Alert.alert('Error', error.message || 'Failed to submit report. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [user, photoUri, photoData, locationInfo]);
 
-  const canSubmit = photoUri && location && description.trim() && !isSubmitting;
+  // Memoized validation to prevent unnecessary re-renders
+  const canSubmit = useMemo(() => {
+    return photoUri && photoData && photoData.latitude && photoData.longitude && photoData.description.trim() && !isSubmitting;
+  }, [photoUri, photoData, isSubmitting]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -126,6 +220,12 @@ export default function ReportIncidentScreen() {
               <Text style={styles.backButtonText}>← Back</Text>
             </TouchableOpacity>
             
+            {/* Logout Button - Top Right */}
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={20} color="#DC143C" />
+              <Text style={styles.logoutButtonText}>Logout</Text>
+            </TouchableOpacity>
+            
             <Text style={[styles.title, { color: colors.primary }]}>
               📸 Report Incident
             </Text>
@@ -135,22 +235,27 @@ export default function ReportIncidentScreen() {
           </View>
 
           <View style={styles.form}>
-            <PhotoCapture onPhotoSelected={handlePhotoSelected} />
+            <PhotoCapture 
+              onPhotoSelected={handlePhotoSelected}
+              onPhotoData={handlePhotoData}
+            />
             
-                         <LocationCapture 
-               onLocationCaptured={handleLocationCaptured}
-               onLocationInfo={handleLocationInfo}
-             />
+            {/* Additional Location Capture (Optional) */}
+            <LocationCapture 
+              onLocationCaptured={handleLocationCaptured}
+              onLocationInfo={handleLocationInfo}
+            />
             
+            {/* Additional Description Field (Optional) */}
             <FormInput
-              label="Description"
-              placeholder="Describe what you observed..."
+              label="Additional Notes (Optional)"
+              placeholder="Add any additional observations or context..."
               value={description}
               onChangeText={setDescription}
               multiline
-              numberOfLines={4}
+              numberOfLines={3}
               textAlignVertical="top"
-              style={{ minHeight: 100 }}
+              style={{ minHeight: 80 }}
             />
 
             <View style={styles.submitContainer}>
@@ -201,6 +306,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  logoutButton: {
+    position: 'absolute',
+    top: 0,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(220, 20, 60, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DC143C',
+    zIndex: 1,
+  },
+  logoutButtonText: {
+    color: '#DC143C',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -215,7 +340,6 @@ const styles = StyleSheet.create({
   form: {
     flex: 1,
   },
-
   submitContainer: {
     marginTop: 20,
     marginBottom: 40,

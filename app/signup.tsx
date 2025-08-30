@@ -16,69 +16,88 @@ import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { ActionButton } from '@/components/ActionButton';
 
 const { width, height } = Dimensions.get('window');
 
-export default function LoginScreen() {
+export default function SignupScreen() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { signup } = useAuth();
 
   // Memoized validation to prevent unnecessary re-renders
   const isFormValid = useMemo(() => {
-    return email.trim().length > 0 && password.trim().length >= 6;
-  }, [email, password]);
+    return (
+      name.trim().length > 0 &&
+      email.trim().length > 0 &&
+      password.trim().length >= 6 &&
+      password === confirmPassword
+    );
+  }, [name, email, password, confirmPassword]);
 
   // Memoized button styles to prevent style recalculations
   const buttonStyles = useMemo(() => [
-    styles.loginButton,
-    !isFormValid && styles.loginButtonDisabled
+    styles.signupButton,
+    !isFormValid && styles.signupButtonDisabled
   ], [isFormValid]);
 
-  // Optimized login handler with proper loading state
-  const handleLogin = useCallback(async () => {
+  // Optimized signup handler with proper loading state
+  const handleSignup = useCallback(async () => {
     if (!isFormValid || isLoading) return;
 
     try {
       setIsLoading(true);
-      console.log('🚀 Login process started');
+      console.log('🚀 Signup process started');
       
-      const success = await login(email.trim(), password);
+      const success = await signup(email.trim(), password, name.trim());
       
       if (success) {
-        console.log('✅ Login successful, redirecting...');
-        // Navigation will be handled by AuthContext
+        console.log('✅ Signup successful, redirecting to login...');
+        Alert.alert(
+          'Success! 🎉',
+          'Account created successfully! Please sign in with your credentials.',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.push('/login')
+            }
+          ]
+        );
       }
     } catch (error: any) {
-      console.error('❌ Login failed:', error);
+      console.error('❌ Signup failed:', error);
       Alert.alert(
-        'Login Failed',
-        error.message || 'An error occurred during login. Please try again.',
+        'Signup Failed',
+        error.message || 'An error occurred during signup. Please try again.',
         [{ text: 'OK' }]
       );
     } finally {
       setIsLoading(false);
     }
-  }, [email, password, isFormValid, isLoading, login]);
+  }, [name, email, password, isFormValid, isLoading, signup]);
 
   // Optimized navigation handlers
-  const handleSignup = useCallback(() => {
-    router.push('/signup');
-  }, []);
-
-  const handleAdminLogin = useCallback(() => {
-    router.push('/admin-login');
+  const handleBackToLogin = useCallback(() => {
+    router.push('/login');
   }, []);
 
   // Memoized input change handlers
+  const handleNameChange = useCallback((text: string) => {
+    setName(text);
+  }, []);
+
   const handleEmailChange = useCallback((text: string) => {
     setEmail(text);
   }, []);
 
   const handlePasswordChange = useCallback((text: string) => {
     setPassword(text);
+  }, []);
+
+  const handleConfirmPasswordChange = useCallback((text: string) => {
+    setConfirmPassword(text);
   }, []);
 
   return (
@@ -93,12 +112,27 @@ export default function LoginScreen() {
         <ThemedView style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Mangrove Watch</Text>
-            <Text style={styles.subtitle}>Sign in to your account</Text>
+            <Text style={styles.title}>Join Mangrove Watch</Text>
+            <Text style={styles.subtitle}>Create your account to start contributing</Text>
           </View>
 
-          {/* Login Form */}
+          {/* Signup Form */}
           <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={handleNameChange}
+                placeholder="Enter your full name"
+                placeholderTextColor="#8a9ba8"
+                autoCapitalize="words"
+                autoCorrect={false}
+                editable={!isLoading}
+                autoFocus={true}
+              />
+            </View>
+
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Email</Text>
               <TextInput
@@ -111,7 +145,6 @@ export default function LoginScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!isLoading}
-                autoFocus={true}
               />
             </View>
 
@@ -121,54 +154,66 @@ export default function LoginScreen() {
                 style={styles.input}
                 value={password}
                 onChangeText={handlePasswordChange}
-                placeholder="Enter your password"
+                placeholder="Enter your password (min 6 characters)"
                 placeholderTextColor="#8a9ba8"
                 secureTextEntry={true}
                 editable={!isLoading}
               />
             </View>
 
-            {/* Login Button */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <TextInput
+                style={styles.input}
+                value={confirmPassword}
+                onChangeText={handleConfirmPasswordChange}
+                placeholder="Confirm your password"
+                placeholderTextColor="#8a9ba8"
+                secureTextEntry={true}
+                editable={!isLoading}
+              />
+            </View>
+
+            {/* Password match indicator */}
+            {password.length > 0 && confirmPassword.length > 0 && (
+              <View style={styles.passwordMatchContainer}>
+                <Text style={[
+                  styles.passwordMatchText,
+                  password === confirmPassword ? styles.passwordMatchSuccess : styles.passwordMatchError
+                ]}>
+                  {password === confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                </Text>
+              </View>
+            )}
+
+            {/* Signup Button */}
             <TouchableOpacity
               style={buttonStyles}
-              onPress={handleLogin}
+              onPress={handleSignup}
               disabled={!isFormValid || isLoading}
               activeOpacity={0.8}
             >
               {isLoading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color="#ffffff" />
-                  <Text style={styles.loadingText}>Signing in...</Text>
+                  <Text style={styles.loadingText}>Creating account...</Text>
                 </View>
               ) : (
-                <Text style={styles.loginButtonText}>Sign In</Text>
+                <Text style={styles.signupButtonText}>Create Account</Text>
               )}
             </TouchableOpacity>
 
-            {/* Alternative Actions */}
-            <View style={styles.alternativeActions}>
-              <TouchableOpacity
-                style={styles.alternativeButton}
-                onPress={handleSignup}
-                disabled={isLoading}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.alternativeButtonText}>
-                  Don't have an account? Sign up
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.alternativeButton}
-                onPress={handleAdminLogin}
-                disabled={isLoading}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.alternativeButtonText}>
-                  Admin Login
-                </Text>
-              </TouchableOpacity>
-            </View>
+            {/* Back to Login */}
+            <TouchableOpacity
+              style={styles.backToLoginButton}
+              onPress={handleBackToLogin}
+              disabled={isLoading}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.backToLoginText}>
+                Already have an account? Sign in
+              </Text>
+            </TouchableOpacity>
           </View>
         </ThemedView>
       </KeyboardAvoidingView>
@@ -227,7 +272,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  loginButton: {
+  passwordMatchContainer: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  passwordMatchText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  passwordMatchSuccess: {
+    color: '#4CAF50',
+  },
+  passwordMatchError: {
+    color: '#f44336',
+  },
+  signupButton: {
     backgroundColor: '#4CAF50',
     borderRadius: 12,
     paddingVertical: 16,
@@ -243,11 +302,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  loginButtonDisabled: {
+  signupButtonDisabled: {
     backgroundColor: '#666666',
     opacity: 0.6,
   },
-  loginButtonText: {
+  signupButtonText: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
@@ -263,14 +322,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 10,
   },
-  alternativeActions: {
+  backToLoginButton: {
     alignItems: 'center',
-  },
-  alternativeButton: {
     paddingVertical: 12,
-    marginVertical: 5,
   },
-  alternativeButtonText: {
+  backToLoginText: {
     color: '#b8c5cc',
     fontSize: 16,
     textDecorationLine: 'underline',

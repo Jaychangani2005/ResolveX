@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { LeaderboardItem } from '@/components/LeaderboardItem';
 import { getLeaderboard, getCommunityStats, LeaderboardEntry } from '@/services/firebaseService';
-
-
+import { useAuth } from '@/contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function LeaderboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -21,6 +21,7 @@ export default function LeaderboardScreen() {
   
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { logout } = useAuth();
 
   useEffect(() => {
     loadData();
@@ -48,6 +49,24 @@ export default function LeaderboardScreen() {
     setRefreshing(false);
   }, []);
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/login');
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView 
@@ -62,6 +81,12 @@ export default function LeaderboardScreen() {
             onPress={() => router.back()}
           >
             <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          
+          {/* Logout Button - Top Right */}
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={20} color="#DC143C" />
+            <Text style={styles.logoutButtonText}>Logout</Text>
           </TouchableOpacity>
           
           <Text style={[styles.title, { color: colors.primary }]}>
@@ -156,6 +181,26 @@ const styles = StyleSheet.create({
     color: '#2E8B57',
     fontSize: 16,
     fontWeight: '600',
+  },
+  logoutButton: {
+    position: 'absolute',
+    top: 0,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(220, 20, 60, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DC143C',
+    zIndex: 1,
+  },
+  logoutButtonText: {
+    color: '#DC143C',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   title: {
     fontSize: 24,
