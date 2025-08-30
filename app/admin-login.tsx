@@ -36,9 +36,27 @@ export default function AdminLoginScreen() {
       }
     } catch (error: any) {
       console.error('❌ Admin auth error:', error);
+      
+      let errorMessage = 'Invalid admin credentials or insufficient permissions.';
+      
+      // Handle specific Firebase Auth errors
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No admin account found with this email address.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed login attempts. Please try again later.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       Alert.alert(
         'Access Denied', 
-        error.message || 'Invalid admin credentials or insufficient permissions.'
+        errorMessage
       );
     }
     

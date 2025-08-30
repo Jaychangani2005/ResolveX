@@ -1,27 +1,26 @@
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut,
-  User as FirebaseUser
+import {
+    createUserWithEmailAndPassword,
+    User as FirebaseUser,
+    signInWithEmailAndPassword,
+    signOut
 } from 'firebase/auth';
-import { 
-  collection, 
-  addDoc, 
-  setDoc,
-  doc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  updateDoc, 
-  serverTimestamp,
-  deleteDoc
+import {
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    serverTimestamp,
+    setDoc,
+    updateDoc,
+    where
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { User, IncidentReport } from '@/types/user';
-import { auth, db, storage } from './firebaseConfig';
+import { IncidentReport, User, UserRole } from '../types/user';
+import { auth, db } from './firebaseConfig';
 
 // Define missing types locally
 interface LocationInfo {
@@ -68,9 +67,47 @@ export const firebaseSignIn = async (email: string, password: string): Promise<U
     const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
     
     if (!userDoc.exists()) {
-      console.error('❌ User document not found in Firestore for UID:', firebaseUser.uid);
-      console.error('❌ This usually means the user document was not created during signup');
-      throw new Error('User profile not found in database. Please contact support.');
+      console.warn('⚠️ User document not found in Firestore for UID:', firebaseUser.uid);
+      console.log('🔄 Attempting to recover user profile...');
+      
+      // Try to recover by creating a basic user profile
+      try {
+        const recoveredUserData: Omit<User, 'id'> = {
+          email: firebaseUser.email || email,
+          name: firebaseUser.displayName || 'User',
+          role: 'user',
+          points: 0,
+          badge: 'Newcomer',
+          badgeEmoji: '🌱',
+          createdAt: new Date(),
+          lastActive: new Date(),
+          isActive: true,
+          permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard'],
+          location: {
+            city: '',
+            state: '',
+            country: ''
+          },
+          preferences: {
+            notifications: true,
+            emailUpdates: true,
+            language: 'en'
+          }
+        };
+        
+        await setDoc(doc(db, 'users', firebaseUser.uid), recoveredUserData);
+        
+        const recoveredUser: User = {
+          id: firebaseUser.uid,
+          ...recoveredUserData
+        };
+        
+        console.log('✅ User profile recovered successfully');
+        return recoveredUser;
+      } catch (recoveryError) {
+        console.error('❌ Failed to recover user profile:', recoveryError);
+        throw new Error('User profile not found and recovery failed. Please contact support.');
+      }
     }
     
     const userData = userDoc.data() as User;
@@ -105,12 +142,10 @@ export const firebaseSignUp = async (email: string, password: string, name: stri
       lastActive: new Date(),
       isActive: true,
       permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard'],
-      profileImage: undefined,
-      phoneNumber: undefined,
       location: {
-        city: undefined,
-        state: undefined,
-        country: undefined
+        city: '',
+        state: '',
+        country: ''
       },
       preferences: {
         notifications: true,
@@ -350,8 +385,13 @@ export const getAdminStats = async (): Promise<AdminStats> => {
   }
 };
 
-// Create admin user
-export const createAdminUser = async (email: string, password: string, name: string): Promise<User> => {
+// Function to create admin user (for super users only) - using only Firestore
+export const createAdminUser = async (
+  email: string,
+  password: string,
+  name: string,
+  role: 'admin' | 'super_user' | 'ngo'
+): Promise<User> => {
   try {
     console.log('👑 Creating admin user:', email);
     
@@ -363,20 +403,47 @@ export const createAdminUser = async (email: string, password: string, name: str
     const adminUserData: Omit<User, 'id'> = {
       email: email.toLowerCase(),
       name: name.trim(),
-      role: 'admin',
+      role: role,
       points: 0,
-      badge: 'Administrator',
-      badgeEmoji: '👑',
+      badge: role === 'ngo' ? 'NGO Partner' : 'Admin',
+      badgeEmoji: role === 'super_user' ? '👑' : role === 'ngo' ? '🌿' : '🛡️',
       createdAt: new Date(),
       lastActive: new Date(),
       isActive: true,
-      permissions: ['manage_users', 'view_reports', 'approve_reports', 'manage_leaderboard', 'view_analytics'],
-      profileImage: undefined,
-      phoneNumber: undefined,
+      permissions: role === 'super_user' 
+        ? [
+            'manage_users',
+            'manage_admins',
+            'view_reports',
+            'approve_reports',
+            'reject_reports',
+            'manage_leaderboard',
+            'view_analytics',
+            'system_settings',
+            'delete_users',
+            'ban_users'
+          ]
+        : role === 'ngo'
+        ? [
+            'view_incident_pictures',
+            'view_incident_descriptions',
+            'view_user_names',
+            'view_ai_validation_status',
+            'view_incident_reports'
+          ]
+        : [
+            'manage_users',
+            'view_reports',
+            'approve_reports',
+            'manage_leaderboard',
+            'view_analytics'
+          ],
+      profileImage: '',
+      phoneNumber: '',
       location: {
-        city: undefined,
-        state: undefined,
-        country: undefined
+        city: '',
+        state: '',
+        country: ''
       },
       preferences: {
         notifications: true,
@@ -461,7 +528,39 @@ export const getUserIncidents = async (userId: string, limitCount: number = 20):
     console.error('❌ Error fetching user incidents:', error);
     throw error;
   }
-}; 
+};
+
+// Function to get all incidents for NGO users
+export const getAllIncidentsForNGO = async (): Promise<IncidentReport[]> => {
+  try {
+    console.log('🌿 Fetching all incidents for NGO view...');
+    
+    const incidentsQuery = query(
+      collection(db, 'incidents'),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(incidentsQuery);
+    const incidents: IncidentReport[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      incidents.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt.toDate(),
+        updatedAt: data.updatedAt.toDate(),
+        aiValidated: data.aiValidated || false, // Default to false if not set
+      } as IncidentReport);
+    });
+    
+    console.log(`✅ Found ${incidents.length} incidents for NGO view`);
+    return incidents;
+  } catch (error: any) {
+    console.error('❌ Error fetching incidents for NGO:', error);
+    throw new Error(error.message);
+  }
+};
 
 // Helper function to migrate existing users (run this once to fix existing data)
 export const migrateExistingUsers = async (): Promise<void> => {
@@ -540,6 +639,80 @@ export const cleanupDeletedUsers = async (): Promise<void> => {
     console.log(`✅ Cleanup complete! Deleted ${deletedCount} migrated users.`);
   } catch (error) {
     console.error('❌ Cleanup failed:', error);
+    throw error;
+  }
+};
+
+// Function to create NGO user
+export const createNGOUser = async (email: string, password: string, name: string): Promise<User> => {
+  try {
+    console.log('🏢 Creating NGO user:', email);
+    
+    // Create Firebase Auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
+    
+    console.log('🏢 Firebase user created with UID:', firebaseUser.uid);
+    
+    const ngoUserData: Omit<User, 'id'> = {
+      email: email.toLowerCase(),
+      name: name.trim(),
+      role: 'ngo',
+      points: 0,
+      badge: 'NGO Partner',
+      badgeEmoji: '🌿',
+      createdAt: new Date(),
+      lastActive: new Date(),
+      isActive: true,
+      permissions: [
+        'view_incident_pictures',
+        'view_incident_descriptions',
+        'view_user_names',
+        'view_ai_validation_status',
+        'view_incident_reports'
+      ],
+      location: {
+        city: '',
+        state: '',
+        country: ''
+      },
+      preferences: {
+        notifications: true,
+        emailUpdates: true,
+        language: 'en'
+      }
+    };
+    
+    // Create NGO user document with Firebase Auth UID as document ID
+    await setDoc(doc(db, 'users', firebaseUser.uid), ngoUserData);
+    
+    const newNGOUser: User = {
+      id: firebaseUser.uid,
+      ...ngoUserData
+    };
+    
+    console.log('✅ NGO user created successfully:', email);
+    return newNGOUser;
+  } catch (error: any) {
+    console.error('❌ Failed to create NGO user:', error);
+    throw error;
+  }
+};
+
+// Function to update user role (admin only)
+export const updateUserRole = async (userId: string, newRole: UserRole): Promise<void> => {
+  try {
+    console.log(`🔄 Updating user role for ${userId} to ${newRole}`);
+    
+    // Update the user's role in Firestore
+    await updateDoc(doc(db, 'users', userId), {
+      role: newRole,
+      updatedAt: new Date()
+    });
+    
+    console.log(`✅ User role updated successfully to ${newRole}`);
+  } catch (error: any) {
+    console.error('❌ Failed to update user role:', error);
     throw error;
   }
 }; 

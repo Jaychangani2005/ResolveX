@@ -69,9 +69,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
             
             // Navigate based on user role (non-blocking)
             setTimeout(() => {
+              console.log('🧭 Restoring user session, navigating to appropriate dashboard for role:', userProfile.role);
               if (userProfile.role === 'admin' || userProfile.role === 'super_user') {
+                console.log('🛡️ Restoring admin session, redirecting to admin dashboard');
                 router.replace('/(admin)/dashboard');
+              } else if (userProfile.role === 'ngo') {
+                console.log('🏢 Restoring NGO session, redirecting to NGO dashboard');
+                router.replace('/(ngo)/dashboard');
               } else {
+                console.log('👤 Restoring regular user session, redirecting to main tabs');
                 router.replace('/(tabs)');
               }
             }, 100);
@@ -142,6 +148,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       console.log('🎉 Login complete! User should now be redirected to main app');
       
+      // Navigate based on user role
+      setTimeout(() => {
+        console.log('🧭 Navigating user to appropriate dashboard based on role:', userProfile.role);
+        if (userProfile.role === 'admin' || userProfile.role === 'super_user') {
+          console.log('🛡️ Redirecting admin user to admin dashboard');
+          router.replace('/(admin)/dashboard');
+        } else if (userProfile.role === 'ngo') {
+          console.log('🏢 Redirecting NGO user to NGO dashboard');
+          router.replace('/(ngo)/dashboard');
+        } else {
+          console.log('👤 Redirecting regular user to main tabs');
+          router.replace('/(tabs)');
+        }
+      }, 100);
+      
       return true;
     } catch (error: any) {
       console.error('❌ Login error:', error);
@@ -164,7 +185,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await saveUserToStorage(userProfile);
       setUser(userProfile);
       
-      console.log('🎉 Signup complete! User should now be redirected to login');
+      console.log('🎉 Signup complete! User should now be redirected to main app');
+      
+      // Navigate based on user role (new users are always 'user' role)
+      setTimeout(() => {
+        console.log('🧭 Navigating new user to main tabs');
+        router.replace('/(tabs)');
+      }, 100);
       
       return true;
     } catch (error: any) {
@@ -189,6 +216,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(userProfile);
       
       console.log('🎉 Admin login complete! User should now be redirected to admin dashboard');
+      
+      // Navigate admin user to admin dashboard
+      setTimeout(() => {
+        console.log('🛡️ Redirecting admin user to admin dashboard');
+        router.replace('/(admin)/dashboard');
+      }, 100);
       
       return true;
     } catch (error: any) {

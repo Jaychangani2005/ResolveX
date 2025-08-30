@@ -13,7 +13,7 @@ interface User {
   id: string;                    // Firebase Auth UID
   email: string;                 // User's email address
   name: string;                  // Full name
-  role: 'user' | 'admin' | 'super_user';  // User role
+  role: 'user' | 'admin' | 'super_user' | 'ngo';  // User role
   points: number;                // Points earned
   badge: string;                 // Current badge
   badgeEmoji: string;            // Badge emoji
@@ -52,6 +52,11 @@ interface User {
 - **Permissions**: `['manage_users', 'manage_admins', 'view_reports', 'approve_reports', 'reject_reports', 'manage_leaderboard', 'view_analytics', 'system_settings', 'delete_users', 'ban_users']`
 - **Badge**: Super Admin 👑
 - **Access**: Full system access, admin management
+
+### NGO User (`ngo`)
+- **Permissions**: `['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports']`
+- **Badge**: NGO Partner 🌿
+- **Access**: View all incident reports with user details and AI validation status
 
 ## Authentication Flow
 

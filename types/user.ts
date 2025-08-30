@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'admin' | 'super_user';
+export type UserRole = 'user' | 'admin' | 'super_user' | 'ngo';
 
 export interface User {
   id: string;
@@ -79,9 +79,21 @@ export interface IncidentReport {
   };
   description: string;
   status: 'pending' | 'approved' | 'rejected' | 'resolved';
+  aiValidated?: boolean; // AI validation status
   createdAt: Date;
   updatedAt: Date;
   reviewedBy?: string;
   reviewedAt?: Date;
   adminNotes?: string;
+}
+
+export interface NGOUser extends User {
+  role: 'ngo';
+  permissions: [
+    'view_incident_pictures',
+    'view_incident_descriptions',
+    'view_user_names',
+    'view_ai_validation_status',
+    'view_incident_reports'
+  ];
 } 

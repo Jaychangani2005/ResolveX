@@ -20,6 +20,8 @@ service cloud.firestore {
     // Incidents collection - allow creation and reading
     match /incidents/{incidentId} {
       allow read, write: if true;
+      // NGO users can read all incidents
+      allow read: if true;
     }
     
     // User activities collection - allow creation and reading

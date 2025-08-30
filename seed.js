@@ -1,6 +1,6 @@
 // seed.js
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getFirestore, serverTimestamp, setDoc } from "firebase/firestore";
 
 // 🔹 Your Firebase config
 const firebaseConfig = {
@@ -68,6 +68,15 @@ async function seed() {
     points: 0,
     badges: [],
     reportsCount: 0
+  });
+  await setDoc(doc(db, "users", "user123"), {
+    name: "Admin123",
+    email: "admin@gmail.com",
+    password: "admin@123",  // ⚠️ for demo only
+    role: "admin",
+    points: 20,
+    badges: ["Guardian"],
+    reportsCount: 1
   });
 
   console.log("✅ Users and Reports seeded with email, password, and role!");

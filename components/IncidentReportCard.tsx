@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { IncidentReport } from '@/services/firebaseService';
 import { formatCoordinates } from '@/services/locationService';
+import { router } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface IncidentReportCardProps {
   incident: IncidentReport;
@@ -13,6 +15,13 @@ interface IncidentReportCardProps {
 export function IncidentReportCard({ incident, showUserInfo = false }: IncidentReportCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { user } = useAuth();
+
+  const handleCardPress = () => {
+    if (user?.role === 'ngo') {
+      router.push(`/(ngo)/report-details/${incident.id}`);
+    }
+  };
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -46,8 +55,11 @@ export function IncidentReportCard({ incident, showUserInfo = false }: IncidentR
     }
   };
 
+  const CardContainer = user?.role === 'ngo' ? TouchableOpacity : View;
+  const cardProps = user?.role === 'ngo' ? { onPress: handleCardPress, activeOpacity: 0.7 } : {};
+
   return (
-    <View style={styles.container}>
+    <CardContainer style={styles.container} {...cardProps}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.statusContainer}>
@@ -86,6 +98,23 @@ export function IncidentReportCard({ incident, showUserInfo = false }: IncidentR
           {incident.description}
         </Text>
       </View>
+
+      {/* AI Validation Status */}
+      {incident.aiValidated !== undefined && (
+        <View style={styles.aiValidationContainer}>
+          <Text style={[styles.aiValidationLabel, { color: colors.primary }]}>
+            🤖 AI Validation Status:
+          </Text>
+          <View style={styles.aiValidationRow}>
+            <Text style={[
+              styles.aiValidationText, 
+              { color: incident.aiValidated ? '#28a745' : '#dc3545' }
+            ]}>
+              {incident.aiValidated ? '✅ Validated' : '❌ Not Validated'}
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Location Information */}
       <View style={styles.locationContainer}>
@@ -139,7 +168,7 @@ export function IncidentReportCard({ incident, showUserInfo = false }: IncidentR
           </Text>
         </View>
       </View>
-    </View>
+    </CardContainer>
   );
 }
 
@@ -216,6 +245,27 @@ const styles = StyleSheet.create({
   descriptionText: {
     fontSize: 16,
     lineHeight: 24,
+  },
+  aiValidationContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    marginBottom: 16,
+  },
+  aiValidationLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  aiValidationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  aiValidationText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   locationContainer: {
     backgroundColor: 'rgba(0, 0, 0, 0.02)',

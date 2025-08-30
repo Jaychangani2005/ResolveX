@@ -178,6 +178,14 @@ function getDefaultPermissions(role) {
         'delete_users',
         'ban_users'
       ];
+    case 'ngo':
+      return [
+        'view_incident_pictures',
+        'view_incident_descriptions',
+        'view_user_names',
+        'view_ai_validation_status',
+        'view_incident_reports'
+      ];
     default:
       return [
         'submit_reports',
