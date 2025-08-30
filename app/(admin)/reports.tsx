@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getIncidents, updateIncidentStatus } from '@/services/firebaseService';
+import { updateIncidentStatus } from '@/services/firebaseService';
 import { IncidentReport } from '@/types/user';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,10 +28,6 @@ export default function ReportsScreen() {
     loadReports();
   }, []);
 
-<<<<<<< HEAD
-  // Only admin can access this screen
-  if (!user || user.role !== 'admin') {
-=======
   useEffect(() => {
     const filtered = reports.filter(report => 
       report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -109,9 +105,7 @@ export default function ReportsScreen() {
   };
 
   const getRoleBadge = () => {
-    if (user?.role === 'super_user') {
-      return { text: 'Super User', color: '#FFD700' };
-    } else if (user?.role === 'admin') {
+    if (user?.role === 'admin') {
       return { text: 'Admin', color: '#4169E1' };
     }
     return { text: 'User', color: '#32CD32' };
@@ -120,7 +114,6 @@ export default function ReportsScreen() {
   const roleBadge = getRoleBadge();
 
   if (isLoading) {
->>>>>>> 6e807afbab16fcaf40d5ab16717b91870ecc77e6
     return (
       <SafeAreaView style={styles.container}>
         <LinearGradient

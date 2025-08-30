@@ -5,6 +5,7 @@ import { ActionButton } from './ActionButton';
 import { FormInput } from './FormInput';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
+import { validatePhoneNumber, formatPhoneNumber } from '@/services/firebaseService';
 
 interface ProfileFormData {
   name: string;
@@ -32,14 +33,26 @@ export const UserProfileManager: React.FC = () => {
     language: user?.preferences?.language || 'en',
   });
 
+  // Phone number validation status
+  const phoneNumberStatus = () => {
+    if (formData.phoneNumber.trim().length === 0) return null; // Optional field
+    if (!validatePhoneNumber(formData.phoneNumber)) return 'invalid';
+    return 'valid';
+  };
+
   const handleSave = async () => {
     if (!user) return;
 
+    // Validate phone number if provided
+    if (formData.phoneNumber.trim().length > 0 && !validatePhoneNumber(formData.phoneNumber)) {
+      Alert.alert('Invalid Phone Number', 'Please enter a valid phone number or leave it empty.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await updateProfile({
+      const updates: any = {
         name: formData.name.trim(),
-        phoneNumber: formData.phoneNumber.trim(),
         location: {
           city: formData.city.trim(),
           state: formData.state.trim(),
@@ -50,13 +63,30 @@ export const UserProfileManager: React.FC = () => {
           emailUpdates: formData.emailUpdates,
           language: formData.language,
         },
-      });
+      };
+
+      // Only include phone number if it's provided and valid
+      if (formData.phoneNumber.trim().length > 0) {
+        updates.phoneNumber = formatPhoneNumber(formData.phoneNumber.trim());
+      } else {
+        updates.phoneNumber = undefined; // Remove phone number if empty
+      }
+
+      await updateProfile(updates);
 
       Alert.alert('Success', 'Profile updated successfully!');
       setIsEditing(false);
       await refreshUser(); // Refresh user data from Firestore
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to update profile');
+      let errorMessage = 'Failed to update profile';
+      
+      if (error.message.includes('phone number')) {
+        errorMessage = error.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -142,14 +172,35 @@ export const UserProfileManager: React.FC = () => {
             placeholder="Enter your name"
           />
 
-          <FormInput
-            label="Phone Number"
-            value={formData.phoneNumber}
-            onChangeText={(text) => setFormData(prev => ({ ...prev, phoneNumber: text }))}
-            editable={isEditing}
-            placeholder="Enter your phone number"
-            keyboardType="phone-pad"
-          />
+          <View style={styles.inputContainer}>
+            <ThemedText style={styles.label}>Phone Number (Optional)</ThemedText>
+            <TextInput
+              style={[
+                styles.input,
+                phoneNumberStatus() === 'invalid' && styles.inputError,
+                phoneNumberStatus() === 'valid' && styles.inputSuccess,
+                !isEditing && styles.inputDisabled
+              ]}
+              value={formData.phoneNumber}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, phoneNumber: text }))}
+              editable={isEditing}
+              placeholder="Enter your phone number"
+              placeholderTextColor="#8a9ba8"
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {phoneNumberStatus() === 'invalid' && (
+              <Text style={styles.errorText}>
+                Please enter a valid phone number
+              </Text>
+            )}
+            {phoneNumberStatus() === 'valid' && (
+              <Text style={styles.successText}>
+                ✓ Valid phone number
+              </Text>
+            )}
+          </View>
 
           <FormInput
             label="City"
@@ -293,6 +344,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 8,
   },
+  inputContainer: {
+    marginBottom: 16,
+  },
   input: {
     fontSize: 16,
     color: '#fff',
@@ -302,6 +356,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  inputError: {
+    borderColor: '#ff6b6b',
+    borderWidth: 2,
+  },
+  inputSuccess: {
+    borderColor: '#4CAF50',
+    borderWidth: 2,
   },
   inputDisabled: {
     opacity: 0.6,
@@ -348,8 +410,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   errorText: {
-    fontSize: 16,
-    textAlign: 'center',
+    fontSize: 12,
     color: '#ff6b6b',
+    marginTop: 4,
+  },
+  successText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    marginTop: 4,
   },
 }); 

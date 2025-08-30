@@ -20,7 +20,6 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-<<<<<<< HEAD
   // Only admin can access this screen
   if (!user || user.role !== 'admin') {
     return (
@@ -39,14 +38,12 @@ export default function SettingsScreen() {
       </SafeAreaView>
     );
   }
-=======
+
   const getRoleBadge = () => {
-    if (user?.role === 'super_user') {
-      return { text: 'Super User', color: '#FFD700' };
-    } else if (user?.role === 'admin') {
-      return { text: 'Admin', color: '#4169E1' };
+    if (user?.role === 'admin') {
+      return { text: 'Admin', emoji: '🛡️', color: '#4169E1' };
     }
-    return { text: 'User', color: '#32CD32' };
+    return { text: 'User', emoji: '👤', color: '#32CD32' };
   };
 
   const roleBadge = getRoleBadge();
@@ -81,7 +78,6 @@ export default function SettingsScreen() {
   const handleAbout = () => {
     setShowAboutModal(true);
   };
->>>>>>> 6e807afbab16fcaf40d5ab16717b91870ecc77e6
 
   const handleLogout = () => {
     Alert.alert(
@@ -101,35 +97,6 @@ export default function SettingsScreen() {
     );
   };
 
-<<<<<<< HEAD
-  const handleSettingChange = (setting: string, value: boolean) => {
-    switch (setting) {
-      case 'notifications':
-        setNotifications(value);
-        break;
-      case 'emailUpdates':
-        setEmailUpdates(value);
-        break;
-      case 'autoSync':
-        setAutoSync(value);
-        break;
-      case 'darkMode':
-        setDarkMode(value);
-        break;
-    }
-  };
-
-  const getRoleBadge = () => {
-    if (user?.role === 'admin') {
-      return { text: 'Admin', emoji: '🛡️', color: '#4169E1' };
-    }
-    return { text: 'User', emoji: '👤', color: '#32CD32' };
-  };
-
-  const roleBadge = getRoleBadge();
-
-=======
->>>>>>> 6e807afbab16fcaf40d5ab16717b91870ecc77e6
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient

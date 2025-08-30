@@ -18,68 +18,140 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 async function seed() {
-  // Reports
-  await setDoc(doc(db, "reports", "report1"), {
+  // Generate unique report names
+  const generateReportName = () => {
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    return `REP_${date}_${timestamp}_${randomSuffix}`;
+  };
+
+  // Incidents (updated structure to match IncidentReport interface)
+  const report1Name = generateReportName();
+  await setDoc(doc(db, "incidents", report1Name), {
+    userId: "user123",
+    userEmail: "user123@example.com",
+    userName: "User123",
+    photoUrl: "https://dummy.com/cutting1.jpg",
+    location: {
+      latitude: 22.5726,
+      longitude: 88.3639,
+      address: "Near Creek Area",
+      city: "Kolkata",
+      state: "West Bengal",
+      country: "India",
+      fullAddress: "Near Creek Area, Kolkata, West Bengal, India"
+    },
     description: "Illegal mangrove cutting near creek",
-    latitude: 22.5726,
-    longitude: 88.3639,
-    imageUrl: "https://dummy.com/cutting1.jpg",
-    user: "user123",
+    status: "pending",
+    aiValidated: false,
     createdAt: serverTimestamp(),
-    isValid: true
+    updatedAt: serverTimestamp()
   });
 
-  await setDoc(doc(db, "reports", "report2"), {
+  const report2Name = generateReportName();
+  await setDoc(doc(db, "incidents", report2Name), {
+    userId: "user456",
+    userEmail: "user456@example.com",
+    userName: "User456",
+    photoUrl: "https://dummy.com/dumping1.jpg",
+    location: {
+      latitude: 19.076,
+      longitude: 72.8777,
+      address: "Mangrove Area",
+      city: "Mumbai",
+      state: "Maharashtra",
+      country: "India",
+      fullAddress: "Mangrove Area, Mumbai, Maharashtra, India"
+    },
     description: "Plastic dumping in mangrove area",
-    latitude: 19.076,
-    longitude: 72.8777,
-    imageUrl: "https://dummy.com/dumping1.jpg",
-    user: "user456",
+    status: "pending",
+    aiValidated: false,
     createdAt: serverTimestamp(),
-    isValid: false
+    updatedAt: serverTimestamp()
   });
 
-  // Users
+  // Users (updated structure to match User interface)
   await setDoc(doc(db, "users", "user123"), {
     name: "User123",
     email: "user123@example.com",
-    password: "pass123",  // ⚠️ for demo only
-    role: "citizen",
+    role: "coastal_communities",
     points: 20,
-    badges: ["Guardian"],
-    reportsCount: 1
+    badge: "Guardian",
+    badgeEmoji: "🌱",
+    createdAt: new Date(),
+    lastActive: new Date(),
+    isActive: true,
+    permissions: ["submit_reports", "view_own_reports", "view_leaderboard", "view_community_reports"],
+    profileImage: "",
+    phoneNumber: "+919876543210",
+    location: {
+      city: "Kolkata",
+      state: "West Bengal",
+      country: "India"
+    },
+    preferences: {
+      notifications: true,
+      emailUpdates: true,
+      language: "en"
+    }
   });
 
   await setDoc(doc(db, "users", "user456"), {
     name: "User456",
     email: "user456@example.com",
-    password: "pass456",
-    role: "ngo",
+    role: "conservation_ngos",
     points: 10,
-    badges: ["Watcher"],
-    reportsCount: 1
+    badge: "Watcher",
+    badgeEmoji: "🌿",
+    createdAt: new Date(),
+    lastActive: new Date(),
+    isActive: true,
+    permissions: ["view_incident_pictures", "view_incident_descriptions", "view_user_names", "view_ai_validation_status", "view_incident_reports", "view_analytics", "submit_reports"],
+    profileImage: "",
+    phoneNumber: "+919876543211",
+    location: {
+      city: "Mumbai",
+      state: "Maharashtra",
+      country: "India"
+    },
+    preferences: {
+      notifications: true,
+      emailUpdates: true,
+      language: "en"
+    }
   });
 
   await setDoc(doc(db, "users", "user789"), {
     name: "User789",
     email: "user789@example.com",
-    password: "pass789",
-    role: "authority",
+    role: "government_forestry",
     points: 0,
-    badges: [],
-    reportsCount: 0
-  });
-  await setDoc(doc(db, "users", "user123"), {
-    name: "Admin123",
-    email: "admin@gmail.com",
-    password: "admin@123",  // ⚠️ for demo only
-    role: "admin",
-    points: 20,
-    badges: ["Guardian"],
-    reportsCount: 1
+    badge: "Forestry Official",
+    badgeEmoji: "🌳",
+    createdAt: new Date(),
+    lastActive: new Date(),
+    isActive: true,
+    permissions: ["view_incident_pictures", "view_incident_descriptions", "view_user_names", "view_ai_validation_status", "view_incident_reports", "view_analytics", "approve_reports", "manage_reports", "submit_reports"],
+    profileImage: "",
+    phoneNumber: "+919876543212",
+    location: {
+      city: "Delhi",
+      state: "Delhi",
+      country: "India"
+    },
+    preferences: {
+      notifications: true,
+      emailUpdates: true,
+      language: "en"
+    }
   });
 
-  console.log("✅ Users and Reports seeded with email, password, and role!");
+  console.log("✅ Database seeded successfully!");
+  console.log("📊 Created 2 incidents in 'incidents' collection:");
+  console.log(`   - ${report1Name}: Illegal mangrove cutting near creek`);
+  console.log(`   - ${report2Name}: Plastic dumping in mangrove area`);
+  console.log("👥 Created 3 users in 'users' collection");
 }
 
-seed();
+seed().catch(console.error);

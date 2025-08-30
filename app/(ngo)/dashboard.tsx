@@ -4,7 +4,8 @@ import { ThemedView } from '@/components/ThemedView';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { getAllIncidentsForNGO, IncidentReport } from '@/services/firebaseService';
+import { getAllIncidentsForNGO } from '@/services/firebaseService';
+import { IncidentReport } from '@/types/user';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -68,13 +69,13 @@ export default function NGODashboardScreen() {
 
   // Check if user has NGO permissions
   useEffect(() => {
-    if (user && user.role !== 'ngo') {
+    if (user && user.role !== 'conservation_ngos') {
       Alert.alert('Access Denied', 'You do not have permission to access this area.');
       router.replace('/(tabs)');
     }
   }, [user]);
 
-  if (!user || user.role !== 'ngo') {
+  if (!user || user.role !== 'conservation_ngos') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <ThemedView style={styles.centerContainer}>
@@ -99,14 +100,25 @@ export default function NGODashboardScreen() {
             </ThemedText>
           </View>
           
-          {/* Logout Button */}
-          <TouchableOpacity 
-            style={[styles.logoutButton, { backgroundColor: 'rgba(220, 20, 60, 0.1)' }]}
-            onPress={handleLogout}
-          >
-            <Ionicons name="log-out-outline" size={20} color="#DC143C" />
-            <ThemedText style={styles.logoutButtonText}>Logout</ThemedText>
-          </TouchableOpacity>
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/sms')}
+            >
+              <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
+              <ThemedText style={styles.actionButtonText}>SMS</ThemedText>
+            </TouchableOpacity>
+            
+            {/* Logout Button */}
+            <TouchableOpacity 
+              style={[styles.logoutButton, { backgroundColor: 'rgba(220, 20, 60, 0.1)' }]}
+              onPress={handleLogout}
+            >
+              <Ionicons name="log-out-outline" size={20} color="#DC143C" />
+              <ThemedText style={styles.logoutButtonText}>Logout</ThemedText>
+            </TouchableOpacity>
+          </View>
         </View>
       </ThemedView>
 
@@ -190,18 +202,20 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
   },
-  logoutButton: {
+  actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#DC143C',
-    marginLeft: 16,
   },
-  logoutButtonText: {
-    color: '#DC143C',
+  actionButtonText: {
+    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 4,
@@ -216,15 +230,20 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   logoutButton: {
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
-    marginLeft: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DC143C',
+    backgroundColor: 'rgba(220, 20, 60, 0.1)',
   },
   logoutButtonText: {
-    color: '#ffffff',
+    color: '#DC143C',
     fontSize: 14,
     fontWeight: '600',
+    marginLeft: 4,
   },
   statsContainer: {
     flexDirection: 'row',

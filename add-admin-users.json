@@ -1,0 +1,213 @@
+{
+  "admin_users": {
+    "admin_super": {
+      "name": "Super Admin",
+      "email": "superadmin@resolvex.com",
+      "role": "admin",
+      "points": 1000,
+      "badge": "Super Admin",
+      "badgeEmoji": "👑",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "lastActive": "2025-01-01T00:00:00Z",
+      "isActive": true,
+      "permissions": [
+        "manage_users",
+        "manage_admins",
+        "view_reports",
+        "approve_reports",
+        "reject_reports",
+        "manage_leaderboard",
+        "view_analytics",
+        "system_settings",
+        "delete_users",
+        "ban_users",
+        "manage_roles",
+        "view_all_data"
+      ],
+      "location": {
+        "city": "System",
+        "state": "Admin",
+        "country": "Global"
+      },
+      "preferences": {
+        "notifications": true,
+        "emailUpdates": true,
+        "language": "en"
+      }
+    },
+    "admin_forestry": {
+      "name": "Forestry Department Admin",
+      "email": "forestry.admin@resolvex.com",
+      "role": "government_forestry",
+      "points": 500,
+      "badge": "Forestry Director",
+      "badgeEmoji": "🌳",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "lastActive": "2025-01-01T00:00:00Z",
+      "isActive": true,
+      "permissions": [
+        "view_incident_pictures",
+        "view_incident_descriptions",
+        "view_user_names",
+        "view_ai_validation_status",
+        "view_incident_reports",
+        "view_analytics",
+        "approve_reports",
+        "manage_reports",
+        "submit_reports",
+        "manage_forestry_users",
+        "view_forestry_data"
+      ],
+      "location": {
+        "city": "Delhi",
+        "state": "Delhi",
+        "country": "India"
+      },
+      "preferences": {
+        "notifications": true,
+        "emailUpdates": true,
+        "language": "en"
+      }
+    },
+    "admin_ngo": {
+      "name": "NGO Coordinator",
+      "email": "ngo.coordinator@resolvex.com",
+      "role": "conservation_ngos",
+      "points": 300,
+      "badge": "NGO Leader",
+      "badgeEmoji": "🌿",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "lastActive": "2025-01-01T00:00:00Z",
+      "isActive": true,
+      "permissions": [
+        "view_incident_pictures",
+        "view_incident_descriptions",
+        "view_user_names",
+        "view_ai_validation_status",
+        "view_incident_reports",
+        "view_analytics",
+        "submit_reports",
+        "manage_ngo_users",
+        "view_ngo_data",
+        "export_reports"
+      ],
+      "location": {
+        "city": "Mumbai",
+        "state": "Maharashtra",
+        "country": "India"
+      },
+      "preferences": {
+        "notifications": true,
+        "emailUpdates": true,
+        "language": "en"
+      }
+    },
+    "admin_research": {
+      "name": "Research Director",
+      "email": "research.director@resolvex.com",
+      "role": "researchers",
+      "points": 400,
+      "badge": "Research Lead",
+      "badgeEmoji": "🔬",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "lastActive": "2025-01-01T00:00:00Z",
+      "isActive": true,
+      "permissions": [
+        "view_incident_pictures",
+        "view_incident_descriptions",
+        "view_user_names",
+        "view_ai_validation_status",
+        "view_incident_reports",
+        "view_analytics",
+        "export_data",
+        "submit_reports",
+        "view_research_data",
+        "manage_research_users",
+        "access_advanced_analytics"
+      ],
+      "location": {
+        "city": "Bangalore",
+        "state": "Karnataka",
+        "country": "India"
+      },
+      "preferences": {
+        "notifications": true,
+        "emailUpdates": true,
+        "language": "en"
+      }
+    }
+  },
+  "admin_roles": {
+    "super_admin": {
+      "description": "Full system access with all permissions",
+      "permissions": [
+        "manage_users",
+        "manage_admins",
+        "view_reports",
+        "approve_reports",
+        "reject_reports",
+        "manage_leaderboard",
+        "view_analytics",
+        "system_settings",
+        "delete_users",
+        "ban_users",
+        "manage_roles",
+        "view_all_data"
+      ]
+    },
+    "government_admin": {
+      "description": "Government forestry department administrator",
+      "permissions": [
+        "view_incident_pictures",
+        "view_incident_descriptions",
+        "view_user_names",
+        "view_ai_validation_status",
+        "view_incident_reports",
+        "view_analytics",
+        "approve_reports",
+        "manage_reports",
+        "submit_reports",
+        "manage_forestry_users",
+        "view_forestry_data"
+      ]
+    },
+    "ngo_admin": {
+      "description": "NGO organization coordinator",
+      "permissions": [
+        "view_incident_pictures",
+        "view_incident_descriptions",
+        "view_user_names",
+        "view_ai_validation_status",
+        "view_incident_reports",
+        "view_analytics",
+        "submit_reports",
+        "manage_ngo_users",
+        "view_ngo_data",
+        "export_reports"
+      ]
+    },
+    "research_admin": {
+      "description": "Research institution director",
+      "permissions": [
+        "view_incident_pictures",
+        "view_incident_descriptions",
+        "view_user_names",
+        "view_ai_validation_status",
+        "view_incident_reports",
+        "view_analytics",
+        "export_data",
+        "submit_reports",
+        "view_research_data",
+        "manage_research_users",
+        "access_advanced_analytics"
+      ]
+    }
+  },
+  "setup_instructions": {
+    "step1": "Use this JSON data to create admin users in your Firebase database",
+    "step2": "Each admin user has specific permissions based on their role",
+    "step3": "Update the email addresses to match your actual admin users",
+    "step4": "Run the reset-database.cjs script to apply these changes",
+    "step5": "Or manually create these users in Firebase console"
+  }
+}

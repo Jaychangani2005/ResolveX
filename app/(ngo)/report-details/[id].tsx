@@ -8,7 +8,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { getAllIncidentsForNGO } from '@/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
-import { IncidentReport } from '@/services/firebaseService';
+import { IncidentReport } from '@/types/user';
 import { formatCoordinates } from '@/services/locationService';
 
 export default function ReportDetailsScreen() {
@@ -82,13 +82,13 @@ export default function ReportDetailsScreen() {
 
   // Check if user has NGO permissions
   useEffect(() => {
-    if (user && user.role !== 'ngo') {
+    if (user && user.role !== 'conservation_ngos') {
       Alert.alert('Access Denied', 'You do not have permission to access this area.');
       router.replace('/(tabs)');
     }
   }, [user]);
 
-  if (!user || user.role !== 'ngo') {
+  if (!user || user.role !== 'conservation_ngos') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <ThemedView style={styles.centerContainer}>

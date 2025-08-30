@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { getCurrentLocationWithAddress, LocationInfo, formatCoordinates } from '@/services/locationService';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface LocationCaptureProps {
   onLocationCaptured: (location: { latitude: number; longitude: number } | null) => void;
@@ -57,62 +59,112 @@ export function LocationCapture({ onLocationCaptured, onLocationInfo }: Location
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, { color: colors.text }]}>GPS Location</Text>
+      <Text style={[styles.label, { color: colors.text }]}>Additional GPS Location (Optional)</Text>
       
-             {location ? (
-         <View style={styles.locationContainer}>
-           {/* Address Display */}
-           {locationInfo && (
-             <View style={styles.addressContainer}>
-               <Text style={[styles.addressLabel, { color: colors.primary }]}>📍 Location Address:</Text>
-               <Text style={[styles.addressText, { color: colors.text }]}>
-                 {locationInfo.fullAddress}
-               </Text>
-             </View>
-           )}
-           
-           {/* Coordinates Display */}
-           <View style={styles.coordinatesContainer}>
-             <Text style={[styles.coordinateLabel, { color: colors.secondary }]}>Coordinates:</Text>
-             <Text style={[styles.coordinateValue, { color: colors.text }]}>
-               {formatCoordinates(location.latitude, location.longitude)}
-             </Text>
-           </View>
-           
-           {/* City and Country */}
-           {locationInfo && (
-             <View style={styles.locationDetails}>
-               <View style={styles.locationDetail}>
-                 <Text style={[styles.detailLabel, { color: colors.secondary }]}>City:</Text>
-                 <Text style={[styles.detailValue, { color: colors.text }]}>
-                   {locationInfo.city}
-                 </Text>
-               </View>
-               {locationInfo.state && (
-                 <View style={styles.locationDetail}>
-                   <Text style={[styles.detailLabel, { color: colors.secondary }]}>State:</Text>
-                   <Text style={[styles.detailValue, { color: colors.text }]}>
-                     {locationInfo.state}
-                   </Text>
-                 </View>
-               )}
-               <View style={styles.locationDetail}>
-                 <Text style={[styles.detailLabel, { color: colors.secondary }]}>Country:</Text>
-                 <Text style={[styles.detailValue, { color: colors.text }]}>
-                   {locationInfo.country}
-                 </Text>
-               </View>
-             </View>
-           )}
-           
-           <TouchableOpacity 
-             style={[styles.clearButton, { backgroundColor: colors.error }]}
-             onPress={clearLocation}
-           >
-             <Text style={styles.clearButtonText}>Clear Location</Text>
-           </TouchableOpacity>
-         </View>
-       ) : (
+      {location ? (
+        <View style={styles.enhancedLocationContainer}>
+          <LinearGradient
+            colors={['#2196F3', '#1976D2']}
+            style={styles.locationHeader}
+          >
+            <View style={styles.locationHeaderContent}>
+              <Ionicons name="location" size={20} color="#fff" />
+              <Text style={styles.locationHeaderText}>Additional Location</Text>
+              <View style={styles.locationStatusBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#fff" />
+                <Text style={styles.locationStatusText}>Captured</Text>
+              </View>
+            </View>
+          </LinearGradient>
+
+          <View style={styles.locationContent}>
+            {/* Address Display */}
+            {locationInfo && (
+              <View style={styles.addressSection}>
+                <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+                  🏠 Address
+                </Text>
+                <View style={styles.addressContainer}>
+                  <Text style={[styles.addressText, { color: colors.text }]}>
+                    {locationInfo.fullAddress}
+                  </Text>
+                </View>
+              </View>
+            )}
+            
+            {/* Coordinates Display */}
+            <View style={styles.coordinatesSection}>
+              <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+                📍 Coordinates
+              </Text>
+              <View style={styles.coordinatesGrid}>
+                <View style={styles.coordinateItem}>
+                  <Text style={[styles.coordinateLabel, { color: colors.secondary }]}>
+                    Latitude
+                  </Text>
+                  <Text style={[styles.coordinateValue, { color: colors.text }]}>
+                    {location.latitude.toFixed(6)}°
+                  </Text>
+                </View>
+                <View style={styles.coordinateItem}>
+                  <Text style={[styles.coordinateLabel, { color: colors.secondary }]}>
+                    Longitude
+                  </Text>
+                  <Text style={[styles.coordinateValue, { color: colors.text }]}>
+                    {location.longitude.toFixed(6)}°
+                  </Text>
+                </View>
+              </View>
+            </View>
+            
+            {/* Location Details */}
+            {locationInfo && (
+              <View style={styles.detailsSection}>
+                <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+                  📋 Details
+                </Text>
+                <View style={styles.detailsGrid}>
+                  {locationInfo.city && (
+                    <View style={styles.detailItem}>
+                      <Ionicons name="business" size={14} color={colors.secondary} />
+                      <Text style={[styles.detailLabel, { color: colors.secondary }]}>City</Text>
+                      <Text style={[styles.detailValue, { color: colors.text }]}>
+                        {locationInfo.city}
+                      </Text>
+                    </View>
+                  )}
+                  {locationInfo.state && (
+                    <View style={styles.detailItem}>
+                      <Ionicons name="map" size={14} color={colors.secondary} />
+                      <Text style={[styles.detailLabel, { color: colors.secondary }]}>State</Text>
+                      <Text style={[styles.detailValue, { color: colors.text }]}>
+                        {locationInfo.state}
+                      </Text>
+                    </View>
+                  )}
+                  {locationInfo.country && (
+                    <View style={styles.detailItem}>
+                      <Ionicons name="flag" size={14} color={colors.secondary} />
+                      <Text style={[styles.detailLabel, { color: colors.secondary }]}>Country</Text>
+                      <Text style={[styles.detailValue, { color: colors.text }]}>
+                        {locationInfo.country}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+            
+            <TouchableOpacity 
+              style={[styles.clearButton, { backgroundColor: colors.error }]}
+              onPress={clearLocation}
+            >
+              <Ionicons name="trash-outline" size={16} color="#fff" />
+              <Text style={styles.clearButtonText}>Clear Location</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
         <TouchableOpacity 
           style={[
             styles.captureButton, 
@@ -124,9 +176,15 @@ export function LocationCapture({ onLocationCaptured, onLocationInfo }: Location
           onPress={captureLocation}
           disabled={isLoading}
         >
-          <Text style={styles.captureButtonText}>
-            {isLoading ? '📍 Capturing...' : '📍 Capture GPS Location'}
-          </Text>
+          <LinearGradient
+            colors={['#2196F3', '#1976D2']}
+            style={styles.buttonGradient}
+          >
+            <Ionicons name="location" size={20} color="#fff" />
+            <Text style={styles.captureButtonText}>
+              {isLoading ? '📍 Capturing...' : '📍 Capture Additional Location'}
+            </Text>
+          </LinearGradient>
         </TouchableOpacity>
       )}
     </View>
@@ -143,11 +201,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   captureButton: {
-    paddingVertical: 18,
-    paddingHorizontal: 24,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -156,76 +211,135 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    gap: 10,
   },
   captureButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
-  locationContainer: {
+  enhancedLocationContainer: {
     backgroundColor: '#f8f9fa',
-    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e9ecef',
+    overflow: 'hidden',
+  },
+  locationHeader: {
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  locationHeaderText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  locationStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  locationStatusText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  locationContent: {
+    padding: 16,
+  },
+  addressSection: {
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
   },
   addressContainer: {
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  addressLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
+    backgroundColor: '#e9ecef',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
   },
   addressText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
-    lineHeight: 22,
+    lineHeight: 20,
   },
-  coordinatesContainer: {
+  coordinatesSection: {
+    marginBottom: 15,
+  },
+  coordinatesGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+  },
+  coordinateItem: {
+    alignItems: 'center',
+    flex: 1,
   },
   coordinateLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 11,
+    marginBottom: 4,
   },
   coordinateValue: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: 'bold',
     fontFamily: 'monospace',
   },
-  locationDetails: {
-    marginBottom: 16,
+  detailsSection: {
+    marginBottom: 15,
   },
-  locationDetail: {
+  detailsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 8,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    width: '48%',
   },
   detailLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 11,
+    marginLeft: 6,
   },
   detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
   },
   clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignSelf: 'flex-end',
-    marginTop: 8,
+    gap: 6,
   },
   clearButtonText: {
     color: '#fff',

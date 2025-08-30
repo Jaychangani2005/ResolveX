@@ -8,7 +8,7 @@ export default function NGOLayout() {
 
   useEffect(() => {
     // Redirect non-NGO users
-    if (user && user.role !== 'ngo') {
+    if (user && user.role !== 'conservation_ngos') {
       router.replace('/(tabs)');
     }
   }, [user]);

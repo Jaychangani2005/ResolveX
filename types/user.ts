@@ -12,14 +12,14 @@ export interface User {
   lastActive: Date;
   isActive: boolean;
   permissions: string[];
-  profileImage?: string;
-  phoneNumber?: string;
-  location?: {
-    city?: string;
-    state?: string;
-    country?: string;
+  profileImage: string;
+  phoneNumber: string;
+  location: {
+    city: string;
+    state: string;
+    country: string;
   };
-  preferences?: {
+  preferences: {
     notifications: boolean;
     emailUpdates: boolean;
     language: string;

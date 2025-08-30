@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
 import { ActionButton } from './ActionButton';
-import { getUsers, searchUsers, updateUserProfile, User } from '@/services/firebaseService';
+import { getUsers, searchUsers, updateUserProfile } from '@/services/firebaseService';
+import { User } from '@/types/user';
 
 export const AdminUserManager: React.FC = () => {
   const { user: currentUser } = useAuth();

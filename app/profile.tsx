@@ -9,7 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ActionButton } from '@/components/ActionButton';
 import { IncidentReportCard } from '@/components/IncidentReportCard';
 import { UserProfileManager } from '@/components/UserProfileManager';
-import { getUserIncidents, IncidentReport } from '@/services/firebaseService';
+import { getUserIncidents } from '@/services/firebaseService';
+import { IncidentReport } from '@/types/user';
 
 const { width, height } = Dimensions.get('window');
 
