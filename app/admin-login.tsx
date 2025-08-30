@@ -156,6 +156,15 @@ export default function AdminLoginScreen() {
                   ← Back to User Login
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity 
+                onPress={() => router.push('/ngo-login')} 
+                style={[styles.userLoginButton, { marginTop: 8 }]}
+              >
+                <Text style={styles.userLoginText}>
+                  🌿 NGO Login
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Security Notice */}
