@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { updateIncidentStatus } from '@/services/firebaseService';
+import { updateIncidentStatus, getIncidents } from '@/services/firebaseService';
 import { IncidentReport } from '@/types/user';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

@@ -3,9 +3,15 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput 
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemedView } from './ThemedView';
 import { ThemedText } from './ThemedText';
-import { ActionButton } from './ActionButton';
-import { getUsers, searchUsers, updateUserProfile } from '@/services/firebaseService';
+import { getUsers, updateUserProfile, updateUserRole } from '@/services/firebaseService';
 import { User } from '@/types/user';
+import { 
+  getResponsivePadding, 
+  spacing,
+  fontSizes,
+  borderRadius,
+  deviceType
+} from '@/utils/responsive';
 
 export const AdminUserManager: React.FC = () => {
   const { user: currentUser } = useAuth();
@@ -13,7 +19,6 @@ export const AdminUserManager: React.FC = () => {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
     if (currentUser && currentUser.role === 'admin') {
@@ -50,21 +55,22 @@ export const AdminUserManager: React.FC = () => {
     if (!currentUser) return;
 
     let message = '';
-    let updates: Partial<User> = {};
+    let roleUpdate: string | null = null;
+    let profileUpdates: Partial<User> = {};
 
     switch (action) {
       case 'activate':
         message = `Are you sure you want to activate ${targetUser.name}?`;
-        updates = { isActive: true };
+        profileUpdates = { isActive: true };
         break;
       case 'deactivate':
         message = `Are you sure you want to deactivate ${targetUser.name}?`;
-        updates = { isActive: false };
+        profileUpdates = { isActive: false };
         break;
       case 'promote':
         message = `Are you sure you want to promote ${targetUser.name} to admin?`;
-        updates = { 
-          role: 'admin',
+        roleUpdate = 'admin';
+        profileUpdates = { 
           permissions: [
             'manage_users',
             'view_reports',
@@ -77,8 +83,8 @@ export const AdminUserManager: React.FC = () => {
         break;
       case 'demote':
         message = `Are you sure you want to demote ${targetUser.name} to coastal community user?`;
-        updates = { 
-          role: 'coastal_communities',
+        roleUpdate = 'coastal_communities';
+        profileUpdates = { 
           permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard', 'view_community_reports']
         };
         break;
@@ -96,7 +102,16 @@ export const AdminUserManager: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await updateUserProfile(targetUser.id, updates);
+              // Update role if needed
+              if (roleUpdate) {
+                await updateUserRole(targetUser.id, roleUpdate as any);
+              }
+              
+              // Update profile if there are other changes
+              if (Object.keys(profileUpdates).length > 0) {
+                await updateUserProfile(targetUser.id, profileUpdates);
+              }
+              
               Alert.alert('Success', `User ${action}d successfully`);
               await loadUsers(); // Refresh user list
             } catch (error: any) {
@@ -257,142 +272,149 @@ export const AdminUserManager: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: getResponsivePadding(),
   },
   header: {
-    marginBottom: 24,
+    marginBottom: spacing.lg,
     alignItems: 'center',
   },
   title: {
-    fontSize: 24,
+    fontSize: fontSizes.title,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: fontSizes.md,
     opacity: 0.7,
     textAlign: 'center',
   },
   searchContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    gap: 12,
+    flexDirection: deviceType.isTablet ? 'row' : 'column',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   searchInput: {
     flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     color: '#fff',
-    fontSize: 16,
+    fontSize: fontSizes.md,
+    height: deviceType.isTablet ? 48 : 44,
   },
   refreshButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: borderRadius.md,
+    padding: spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
+    minWidth: deviceType.isTablet ? 60 : 50,
   },
   refreshButtonText: {
-    fontSize: 18,
+    fontSize: fontSizes.lg,
   },
   statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 24,
-    padding: 16,
+    flexDirection: deviceType.isTablet ? 'row' : 'column',
+    justifyContent: deviceType.isTablet ? 'space-around' : 'space-between',
+    marginBottom: spacing.lg,
+    padding: spacing.md,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
+    borderRadius: borderRadius.lg,
+    gap: deviceType.isTablet ? 0 : spacing.sm,
   },
   statItem: {
     alignItems: 'center',
+    flex: deviceType.isTablet ? 0 : 1,
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: fontSizes.xl,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: fontSizes.sm,
     opacity: 0.7,
   },
   usersContainer: {
-    marginBottom: 24,
+    marginBottom: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: fontSizes.lg,
     fontWeight: '600',
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   usersList: {
-    gap: 16,
+    gap: spacing.md,
   },
   userCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   userHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    flexDirection: deviceType.isTablet ? 'row' : 'column',
+    justifyContent: deviceType.isTablet ? 'space-between' : 'flex-start',
+    marginBottom: spacing.md,
+    gap: deviceType.isTablet ? 0 : spacing.sm,
   },
   userInfo: {
     flex: 1,
   },
   userName: {
-    fontSize: 18,
+    fontSize: fontSizes.lg,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   userEmail: {
-    fontSize: 14,
+    fontSize: fontSizes.sm,
     color: '#fff',
     opacity: 0.8,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   userMeta: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.sm,
+    flexWrap: 'wrap',
   },
   userRole: {
-    fontSize: 12,
+    fontSize: fontSizes.sm,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   userStatus: {
-    fontSize: 12,
+    fontSize: fontSizes.sm,
     color: '#fff',
     opacity: 0.8,
   },
   userStats: {
-    alignItems: 'flex-end',
+    alignItems: deviceType.isTablet ? 'flex-end' : 'flex-start',
   },
   userPoints: {
-    fontSize: 16,
+    fontSize: fontSizes.md,
     fontWeight: '600',
     color: '#4CAF50',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   userBadge: {
-    fontSize: 14,
+    fontSize: fontSizes.sm,
     color: '#fff',
     opacity: 0.8,
   },
   userActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
     flexWrap: 'wrap',
+    justifyContent: deviceType.isTablet ? 'flex-start' : 'center',
   },
   actionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    minWidth: 100,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
+    minWidth: deviceType.isTablet ? 120 : 100,
     alignItems: 'center',
   },
   promoteButton: {
@@ -409,27 +431,27 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: fontSizes.sm,
     fontWeight: '500',
   },
   loadingContainer: {
     alignItems: 'center',
-    padding: 40,
+    padding: spacing.xl,
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: fontSizes.md,
     opacity: 0.7,
   },
   emptyContainer: {
     alignItems: 'center',
-    padding: 40,
+    padding: spacing.xl,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: fontSizes.md,
     opacity: 0.7,
   },
   errorText: {
-    fontSize: 16,
+    fontSize: fontSizes.md,
     textAlign: 'center',
     color: '#ff6b6b',
   },

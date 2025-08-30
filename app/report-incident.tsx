@@ -1,15 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, ActivityIndicator, Dimensions, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { ActionButton } from '@/components/ActionButton';
 import { PhotoCapture } from '@/components/PhotoCapture';
-import { LocationCapture } from '@/components/LocationCapture';
 import { FormInput } from '@/components/FormInput';
 import { submitIncidentReport } from '@/services/firebaseService';
-import { LocationInfo } from '@/services/locationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,17 +21,18 @@ interface PhotoData {
 }
 
 export default function ReportIncidentScreen() {
-  const [description, setDescription] = useState('');
   const [photoUri, setPhotoUri] = useState('');
   const [photoData, setPhotoData] = useState<PhotoData | null>(null);
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
   
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user, logout } = useAuth();
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+  const isTablet = width >= 768;
+  const isSmallScreen = width < 375;
 
   // Memoized handlers to prevent unnecessary re-renders
   const handlePhotoSelected = useCallback((uri: string) => {
@@ -61,22 +60,7 @@ export default function ReportIncidentScreen() {
     console.log(`   photoLongitude: ${photoLongitude}`);
   }, []);
 
-  const handleLocationCaptured = useCallback((loc: { latitude: number; longitude: number } | null) => {
-    setLocation(loc);
-    
-    if (loc) {
-      console.log('📍 LOCATION CAPTURED IN REPORT:');
-      console.log(`   Latitude: ${loc.latitude}`);
-      console.log(`   Longitude: ${loc.longitude}`);
-    }
-  }, []);
 
-  const handleLocationInfo = useCallback((info: LocationInfo | null) => {
-    setLocationInfo(info);
-    if (info) {
-      console.log('📍 LOCATION INFO UPDATED:', info);
-    }
-  }, []);
 
   const handleLogout = useCallback(() => {
     Alert.alert(
@@ -99,8 +83,6 @@ export default function ReportIncidentScreen() {
   const clearPhotoData = useCallback(() => {
     setPhotoData(null);
     setPhotoUri('');
-    setLocation(null);
-    setLocationInfo(null);
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -125,40 +107,34 @@ export default function ReportIncidentScreen() {
       return;
     }
 
-    // Check if description exists (either from photo data or additional notes)
-    const hasDescription = photoData.description?.trim() || description?.trim();
-    if (!hasDescription) {
-      Alert.alert('Error', 'Please provide a description for the incident');
-      return;
-    }
+         // Check if description exists in photo data
+     if (!photoData.description?.trim()) {
+       Alert.alert('Error', 'Please provide a description for the incident');
+       return;
+     }
 
     setIsSubmitting(true);
     setUploadProgress('Preparing to submit report...');
 
     try {
-      console.log('🚀 SUBMITTING INCIDENT REPORT...');
-      console.log('📸 Photo Data:', photoData);
-      console.log('📍 Location Info:', locationInfo);
-      console.log('📝 Description:', photoData.description);
-      console.log('📝 Additional Notes:', description);
+             console.log('🚀 SUBMITTING INCIDENT REPORT...');
+       console.log('📸 Photo Data:', photoData);
+       console.log('📝 Description:', photoData.description);
 
-      const locationData = {
-        latitude: photoData.latitude,
-        longitude: photoData.longitude,
-        address: photoData.locationInfo?.fullAddress || locationInfo?.fullAddress || '',
-        city: photoData.locationInfo?.city || locationInfo?.city || '',
-        state: photoData.locationInfo?.state || locationInfo?.state || '',
-        country: photoData.locationInfo?.country || locationInfo?.country || '',
-        fullAddress: photoData.locationInfo?.fullAddress || locationInfo?.fullAddress || '',
-      };
+       const locationData = {
+         latitude: photoData.latitude,
+         longitude: photoData.longitude,
+         address: photoData.locationInfo?.fullAddress || '',
+         city: photoData.locationInfo?.city || '',
+         state: photoData.locationInfo?.state || '',
+         country: photoData.locationInfo?.country || '',
+         fullAddress: photoData.locationInfo?.fullAddress || '',
+       };
 
-      // Combine descriptions
-      const fullDescription = [
-        photoData.description?.trim(),
-        description?.trim()
-      ].filter(Boolean).join('\n\n');
+       // Use photo description directly
+       const fullDescription = photoData.description?.trim() || '';
 
-      console.log('📝 Final Description:', fullDescription);
+       console.log('📝 Final Description:', fullDescription);
 
       setUploadProgress('Uploading photo and location data...');
 
@@ -209,13 +185,13 @@ export default function ReportIncidentScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [user, photoData, locationInfo, description, clearPhotoData]);
+  }, [user, photoData, clearPhotoData]);
 
   // Enhanced validation logic
   const canSubmit = useMemo(() => {
     const hasPhoto = photoData && photoData.uri;
     const hasLocation = photoData && photoData.latitude && photoData.longitude;
-    const hasDescription = (photoData?.description?.trim() || description?.trim());
+    const hasDescription = photoData?.description?.trim();
     const notSubmitting = !isSubmitting;
     
     const canSubmitResult = hasPhoto && hasLocation && hasDescription && notSubmitting;
@@ -232,12 +208,11 @@ export default function ReportIncidentScreen() {
         latitude: photoData.latitude,
         longitude: photoData.longitude,
         description: photoData.description?.trim()
-      } : null,
-      description: description?.trim()
+      } : null
     });
     
     return canSubmitResult;
-  }, [photoData, description, isSubmitting]);
+  }, [photoData, isSubmitting]);
 
   // Enhanced GPS Location Display Component
   const renderGPSLocationDisplay = () => {
@@ -246,7 +221,11 @@ export default function ReportIncidentScreen() {
     }
 
     return (
-      <View style={styles.enhancedLocationContainer}>
+      <View style={[
+        styles.enhancedLocationContainer,
+        isLandscape && styles.enhancedLocationContainerLandscape,
+        isTablet && styles.enhancedLocationContainerTablet
+      ]}>
         <LinearGradient
           colors={['#4CAF50', '#45a049']}
           style={styles.locationHeader}
@@ -267,20 +246,42 @@ export default function ReportIncidentScreen() {
             <Text style={[styles.sectionTitle, { color: colors.primary }]}>
               📍 Coordinates
             </Text>
-            <View style={styles.coordinatesGrid}>
+            <View style={[
+              styles.coordinatesGrid,
+              isLandscape && styles.coordinatesGridLandscape,
+              isTablet && styles.coordinatesGridTablet
+            ]}>
               <View style={styles.coordinateItem}>
-                <Text style={[styles.coordinateLabel, { color: colors.secondary }]}>
+                <Text style={[
+                  styles.coordinateLabel, 
+                  { color: colors.secondary },
+                  isLandscape && styles.coordinateLabelLandscape
+                ]}>
                   Latitude
                 </Text>
-                <Text style={[styles.coordinateValue, { color: colors.text }]}>
+                <Text style={[
+                  styles.coordinateValue, 
+                  { color: colors.text },
+                  isLandscape && styles.coordinateValueLandscape,
+                  isTablet && styles.coordinateValueTablet
+                ]}>
                   {photoData.latitude.toFixed(6)}°
                 </Text>
               </View>
               <View style={styles.coordinateItem}>
-                <Text style={[styles.coordinateLabel, { color: colors.secondary }]}>
+                <Text style={[
+                  styles.coordinateLabel, 
+                  { color: colors.secondary },
+                  isLandscape && styles.coordinateLabelLandscape
+                ]}>
                   Longitude
                 </Text>
-                <Text style={[styles.coordinateValue, { color: colors.text }]}>
+                <Text style={[
+                  styles.coordinateValue, 
+                  { color: colors.text },
+                  isLandscape && styles.coordinateValueLandscape,
+                  isTablet && styles.coordinateValueTablet
+                ]}>
                   {photoData.longitude.toFixed(6)}°
                 </Text>
               </View>
@@ -307,9 +308,17 @@ export default function ReportIncidentScreen() {
               <Text style={[styles.sectionTitle, { color: colors.primary }]}>
                 📋 Location Details
               </Text>
-              <View style={styles.detailsGrid}>
+              <View style={[
+                styles.detailsGrid,
+                isLandscape && styles.detailsGridLandscape,
+                isTablet && styles.detailsGridTablet
+              ]}>
                 {photoData.locationInfo.city && (
-                  <View style={styles.detailItem}>
+                  <View style={[
+                    styles.detailItem,
+                    isLandscape && styles.detailItemLandscape,
+                    isTablet && styles.detailItemTablet
+                  ]}>
                     <Ionicons name="business" size={16} color={colors.secondary} />
                     <Text style={[styles.detailLabel, { color: colors.secondary }]}>City</Text>
                     <Text style={[styles.detailValue, { color: colors.text }]}>
@@ -318,7 +327,11 @@ export default function ReportIncidentScreen() {
                   </View>
                 )}
                 {photoData.locationInfo.state && (
-                  <View style={styles.detailItem}>
+                  <View style={[
+                    styles.detailItem,
+                    isLandscape && styles.detailItemLandscape,
+                    isTablet && styles.detailItemTablet
+                  ]}>
                     <Ionicons name="map" size={16} color={colors.secondary} />
                     <Text style={[styles.detailLabel, { color: colors.secondary }]}>State</Text>
                     <Text style={[styles.detailValue, { color: colors.text }]}>
@@ -327,7 +340,11 @@ export default function ReportIncidentScreen() {
                   </View>
                 )}
                 {photoData.locationInfo.country && (
-                  <View style={styles.detailItem}>
+                  <View style={[
+                    styles.detailItem,
+                    isLandscape && styles.detailItemLandscape,
+                    isTablet && styles.detailItemTablet
+                  ]}>
                     <Ionicons name="flag" size={16} color={colors.secondary} />
                     <Text style={[styles.detailLabel, { color: colors.secondary }]}>Country</Text>
                     <Text style={[styles.detailValue, { color: colors.text }]}>
@@ -362,127 +379,96 @@ export default function ReportIncidentScreen() {
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.header}>
+        <ScrollView 
+          contentContainerStyle={[
+            styles.scrollContent, 
+            isLandscape && styles.scrollContentLandscape,
+            isTablet && styles.scrollContentTablet
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.header, isLandscape && styles.headerLandscape]}>
             <TouchableOpacity 
-              style={styles.backButton} 
+              style={[styles.backButton, isSmallScreen && styles.backButtonSmall]} 
               onPress={() => router.back()}
             >
-              <Ionicons name="arrow-back" size={20} color="#2E8B57" />
-              <Text style={styles.backButtonText}>Back</Text>
+              <Ionicons name="arrow-back" size={isSmallScreen ? 18 : 20} color="#2E8B57" />
+              <Text style={[styles.backButtonText, isSmallScreen && styles.backButtonTextSmall]}>Back</Text>
             </TouchableOpacity>
             
             {/* Logout Button - Top Right */}
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={20} color="#DC143C" />
-              <Text style={styles.logoutButtonText}>Logout</Text>
+            <TouchableOpacity style={[styles.logoutButton, isSmallScreen && styles.logoutButtonSmall]} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={isSmallScreen ? 18 : 20} color="#DC143C" />
+              <Text style={[styles.logoutButtonText, isSmallScreen && styles.logoutButtonTextSmall]}>Logout</Text>
             </TouchableOpacity>
             
-            <Text style={[styles.title, { color: colors.primary }]}>
+            <Text style={[
+              styles.title, 
+              { color: colors.primary },
+              isSmallScreen && styles.titleSmall,
+              isTablet && styles.titleTablet
+            ]}>
               📸 Report Incident
             </Text>
-            <Text style={[styles.subtitle, { color: colors.text }]}>
+            <Text style={[
+              styles.subtitle, 
+              { color: colors.text },
+              isSmallScreen && styles.subtitleSmall
+            ]}>
               Help us monitor and protect mangrove ecosystems
             </Text>
           </View>
 
-          <View style={styles.form}>
+          <View style={[
+            styles.form,
+            isLandscape && styles.formLandscape,
+            isTablet && styles.formTablet
+          ]}>
             {/* Photo Capture */}
             <PhotoCapture 
               onPhotoSelected={handlePhotoSelected}
               onPhotoData={handlePhotoData}
             />
             
-            {/* Enhanced GPS Location Display */}
-            {renderGPSLocationDisplay()}
-            
-            {/* Additional Location Capture (Optional) */}
-            <LocationCapture 
-              onLocationCaptured={handleLocationCaptured}
-              onLocationInfo={handleLocationInfo}
-            />
-            
-            {/* Clear Photo Data Button */}
-            {photoData && (
-              <TouchableOpacity 
-                style={styles.clearButton} 
-                onPress={clearPhotoData}
-              >
-                <Ionicons name="trash-outline" size={18} color="#DC143C" />
-                <Text style={styles.clearButtonText}>Clear Photo Data</Text>
-              </TouchableOpacity>
-            )}
-            
-            {/* Status Indicator */}
-            <View style={styles.statusContainer}>
-              <Text style={[styles.statusTitle, { color: colors.primary }]}>
-                📋 Report Status
-              </Text>
-              <View style={styles.statusItems}>
-                <View style={styles.statusItem}>
-                  <Ionicons 
-                    name={photoData?.uri ? "checkmark-circle" : "ellipse-outline"} 
-                    size={20} 
-                    color={photoData?.uri ? "#4CAF50" : colors.icon} 
-                  />
-                  <Text style={[styles.statusText, { color: colors.text }]}>
-                    Photo captured
-                  </Text>
-                </View>
-                <View style={styles.statusItem}>
-                  <Ionicons 
-                    name={photoData?.latitude && photoData?.longitude ? "checkmark-circle" : "ellipse-outline"} 
-                    size={20} 
-                    color={photoData?.latitude && photoData?.longitude ? "#4CAF50" : colors.icon} 
-                  />
-                  <Text style={[styles.statusText, { color: colors.text }]}>
-                    GPS location captured
-                  </Text>
-                </View>
-                <View style={styles.statusItem}>
-                  <Ionicons 
-                    name={(photoData?.description?.trim() || description?.trim()) ? "checkmark-circle" : "ellipse-outline"} 
-                    size={20} 
-                    color={(photoData?.description?.trim() || description?.trim()) ? "#4CAF50" : colors.icon} 
-                  />
-                  <Text style={[styles.statusText, { color: colors.text }]}>
-                    Description provided
-                  </Text>
-                </View>
-              </View>
-              {canSubmit && (
-                <View style={styles.readyIndicator}>
-                  <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
-                  <Text style={[styles.readyText, { color: "#4CAF50" }]}>
-                    Ready to submit!
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Additional Description Field (Optional) */}
-            <FormInput
-              label="Additional Notes (Optional)"
-              placeholder="Add any additional observations or context..."
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-              style={{ minHeight: 80 }}
-            />
+                         {/* Enhanced GPS Location Display */}
+             {renderGPSLocationDisplay()}
+             
+             {/* Clear Photo Data Button */}
+             {photoData && (
+               <TouchableOpacity 
+                 style={styles.clearButton} 
+                 onPress={clearPhotoData}
+               >
+                 <Ionicons name="trash-outline" size={18} color="#DC143C" />
+                 <Text style={styles.clearButtonText}>Clear Photo Data</Text>
+               </TouchableOpacity>
+             )}
 
             {/* Required Description Field */}
-            <View style={styles.requiredDescriptionContainer}>
-              <Text style={[styles.requiredLabel, { color: colors.primary }]}>
+            <View style={[
+              styles.requiredDescriptionContainer,
+              isLandscape && styles.requiredDescriptionContainerLandscape,
+              isTablet && styles.requiredDescriptionContainerTablet
+            ]}>
+              <Text style={[
+                styles.requiredLabel, 
+                { color: colors.primary },
+                isLandscape && styles.requiredLabelLandscape,
+                isTablet && styles.requiredLabelTablet
+              ]}>
                 📝 Incident Description *
               </Text>
               <TextInput
-                style={[styles.requiredDescriptionInput, { 
-                  color: colors.text, 
-                  borderColor: colors.border || '#e0e0e0',
-                  backgroundColor: colors.background 
-                }]}
+                style={[
+                  styles.requiredDescriptionInput, 
+                  { 
+                    color: colors.text, 
+                    borderColor: colors.border || '#e0e0e0',
+                    backgroundColor: colors.background 
+                  },
+                  isLandscape && styles.requiredDescriptionInputLandscape,
+                  isTablet && styles.requiredDescriptionInputTablet
+                ]}
                 placeholder="Describe the incident you observed (required)..."
                 placeholderTextColor={colors.text + '80'}
                 value={photoData?.description || ''}
@@ -523,9 +509,7 @@ export default function ReportIncidentScreen() {
                 <Text style={[styles.debugText, { color: colors.text }]}>
                   Photo Description: {photoData?.description?.trim() ? '✅' : '❌'}
                 </Text>
-                <Text style={[styles.debugText, { color: colors.text }]}>
-                  Additional Notes: {description?.trim() ? '✅' : '❌'}
-                </Text>
+                
                 <Text style={[styles.debugText, { color: colors.text }]}>
                   Can Submit: {canSubmit ? '✅' : '❌'}
                 </Text>
@@ -535,9 +519,17 @@ export default function ReportIncidentScreen() {
               </View>
             )}
 
-            <View style={styles.submitContainer}>
+            <View style={[
+              styles.submitContainer,
+              isLandscape && styles.submitContainerLandscape,
+              isTablet && styles.submitContainerTablet
+            ]}>
               {uploadProgress ? (
-                <View style={styles.progressContainer}>
+                <View style={[
+                  styles.progressContainer,
+                  isLandscape && styles.progressContainerLandscape,
+                  isTablet && styles.progressContainerTablet
+                ]}>
                   <Text style={[styles.progressText, { color: colors.primary }]}>
                     {uploadProgress}
                   </Text>
@@ -550,6 +542,8 @@ export default function ReportIncidentScreen() {
                 variant="primary"
                 style={{
                   ...styles.submitButton,
+                  ...(isLandscape && styles.submitButtonLandscape),
+                  ...(isTablet && styles.submitButtonTablet),
                   opacity: canSubmit ? 1 : 0.6
                 }}
                 disabled={!canSubmit}
@@ -573,11 +567,23 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
   },
+  scrollContentLandscape: {
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+  },
+  scrollContentTablet: {
+    paddingHorizontal: 60,
+    paddingVertical: 25,
+  },
   header: {
     alignItems: 'center',
     marginBottom: 30,
     marginTop: 10,
     position: 'relative',
+  },
+  headerLandscape: {
+    marginBottom: 20,
+    marginTop: 15,
   },
   backButton: {
     position: 'absolute',
@@ -588,11 +594,18 @@ const styles = StyleSheet.create({
     padding: 10,
     zIndex: 1,
   },
+  backButtonSmall: {
+    padding: 8,
+  },
   backButtonText: {
     color: '#2E8B57',
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 4,
+  },
+  backButtonTextSmall: {
+    fontSize: 14,
+    marginLeft: 3,
   },
   logoutButton: {
     position: 'absolute',
@@ -608,11 +621,20 @@ const styles = StyleSheet.create({
     borderColor: '#DC143C',
     zIndex: 1,
   },
+  logoutButtonSmall: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
   logoutButtonText: {
     color: '#DC143C',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 4,
+  },
+  logoutButtonTextSmall: {
+    fontSize: 12,
+    marginLeft: 3,
   },
   title: {
     fontSize: 24,
@@ -620,13 +642,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+  titleSmall: {
+    fontSize: 20,
+    marginBottom: 6,
+  },
+  titleTablet: {
+    fontSize: 28,
+    marginBottom: 12,
+  },
   subtitle: {
     fontSize: 14,
     textAlign: 'center',
     opacity: 0.8,
   },
+  subtitleSmall: {
+    fontSize: 12,
+  },
   form: {
     flex: 1,
+  },
+  formLandscape: {
+    paddingHorizontal: 20,
+  },
+  formTablet: {
+    paddingHorizontal: 30,
   },
   enhancedLocationContainer: {
     backgroundColor: '#f8f9fa',
@@ -635,6 +674,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e9ecef',
     overflow: 'hidden',
+  },
+  enhancedLocationContainerLandscape: {
+    marginBottom: 15,
+  },
+  enhancedLocationContainerTablet: {
+    marginBottom: 25,
+    borderRadius: 16,
   },
   locationHeader: {
     padding: 16,
@@ -684,6 +730,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  coordinatesGridLandscape: {
+    justifyContent: 'space-around',
+  },
+  coordinatesGridTablet: {
+    justifyContent: 'space-evenly',
+  },
   coordinateItem: {
     alignItems: 'center',
   },
@@ -691,10 +743,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 4,
   },
+  coordinateLabelLandscape: {
+    fontSize: 14,
+    marginBottom: 6,
+  },
   coordinateValue: {
     fontSize: 20,
     fontWeight: 'bold',
     fontFamily: 'monospace',
+  },
+  coordinateValueLandscape: {
+    fontSize: 22,
+  },
+  coordinateValueTablet: {
+    fontSize: 24,
   },
   addressSection: {
     marginBottom: 15,
@@ -718,11 +780,25 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
+  detailsGridLandscape: {
+    justifyContent: 'space-around',
+  },
+  detailsGridTablet: {
+    justifyContent: 'space-evenly',
+  },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
     width: '48%', // Two columns
+  },
+  detailItemLandscape: {
+    width: '45%',
+    marginBottom: 10,
+  },
+  detailItemTablet: {
+    width: '30%',
+    marginBottom: 12,
   },
   detailLabel: {
     fontSize: 12,
@@ -779,8 +855,22 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 40,
   },
+  submitContainerLandscape: {
+    marginTop: 15,
+    marginBottom: 30,
+  },
+  submitContainerTablet: {
+    marginTop: 30,
+    marginBottom: 50,
+  },
   submitButton: {
     minWidth: 200,
+  },
+  submitButtonLandscape: {
+    minWidth: 180,
+  },
+  submitButtonTablet: {
+    minWidth: 250,
   },
   progressContainer: {
     alignItems: 'center',
@@ -790,6 +880,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e9ecef',
+  },
+  progressContainerLandscape: {
+    marginBottom: 12,
+    padding: 10,
+  },
+  progressContainerTablet: {
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 12,
   },
   progressText: {
     fontSize: 14,
@@ -818,10 +917,26 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 15,
   },
+  requiredDescriptionContainerLandscape: {
+    marginTop: 15,
+    marginBottom: 12,
+  },
+  requiredDescriptionContainerTablet: {
+    marginTop: 25,
+    marginBottom: 20,
+  },
   requiredLabel: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
+  },
+  requiredLabelLandscape: {
+    fontSize: 15,
+    marginBottom: 6,
+  },
+  requiredLabelTablet: {
+    fontSize: 18,
+    marginBottom: 10,
   },
   requiredDescriptionInput: {
     borderRadius: 8,
@@ -829,6 +944,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     borderWidth: 1,
     minHeight: 100,
+  },
+  requiredDescriptionInputLandscape: {
+    padding: 10,
+    fontSize: 13,
+    minHeight: 80,
+  },
+  requiredDescriptionInputTablet: {
+    padding: 16,
+    fontSize: 16,
+    minHeight: 120,
+    borderRadius: 12,
   },
   requiredNote: {
     fontSize: 12,
@@ -843,16 +969,39 @@ const styles = StyleSheet.create({
     borderColor: '#e9ecef',
     padding: 16,
   },
+  statusContainerLandscape: {
+    marginBottom: 15,
+    padding: 12,
+  },
+  statusContainerTablet: {
+    marginBottom: 25,
+    padding: 20,
+    borderRadius: 16,
+  },
   statusTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 15,
     textAlign: 'center',
   },
+  statusTitleLandscape: {
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  statusTitleTablet: {
+    fontSize: 20,
+    marginBottom: 18,
+  },
   statusItems: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 15,
+  },
+  statusItemsLandscape: {
+    marginBottom: 12,
+  },
+  statusItemsTablet: {
+    marginBottom: 18,
   },
   statusItem: {
     alignItems: 'center',
