@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
@@ -10,6 +10,8 @@ interface ActionButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   variant?: 'primary' | 'secondary';
+  disabled?: boolean;
+  loading?: boolean;
 }
 
 export function ActionButton({ 
@@ -17,7 +19,9 @@ export function ActionButton({
   onPress, 
   style, 
   textStyle, 
-  variant = 'primary' 
+  variant = 'primary',
+  disabled = false,
+  loading = false
 }: ActionButtonProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -26,6 +30,7 @@ export function ActionButton({
     styles.button,
     {
       backgroundColor: variant === 'primary' ? colors.primary : colors.secondary,
+      opacity: disabled ? 0.6 : 1,
     },
     style,
   ];
@@ -39,8 +44,17 @@ export function ActionButton({
   ];
 
   return (
-    <TouchableOpacity style={buttonStyle} onPress={onPress} activeOpacity={0.8}>
-      <Text style={textStyleCombined}>{title}</Text>
+    <TouchableOpacity 
+      style={buttonStyle} 
+      onPress={onPress} 
+      activeOpacity={0.8}
+      disabled={disabled || loading}
+    >
+      {loading ? (
+        <ActivityIndicator color="#fff" size="small" />
+      ) : (
+        <Text style={textStyleCombined}>{title}</Text>
+      )}
     </TouchableOpacity>
   );
 }

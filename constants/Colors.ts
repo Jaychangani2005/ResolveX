@@ -14,6 +14,7 @@ export const Colors = {
     icon: '#687076',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+    border: '#E1E5E9',
     // Nature and conservation colors
     primary: '#2E8B57', // Sea Green
     secondary: '#20B2AA', // Light Sea Green
@@ -32,6 +33,7 @@ export const Colors = {
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
+    border: '#2A2D30',
     // Nature and conservation colors
     primary: '#3CB371', // Medium Sea Green
     secondary: '#48D1CC', // Medium Turquoise

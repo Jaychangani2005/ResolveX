@@ -2,8 +2,8 @@
 // This file contains all Firebase services and configuration
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, getDoc, query } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 
 // Firebase configuration object
@@ -30,6 +30,7 @@ if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "your-api-key-here") {
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 
+// Initialize Firebase services with error handling
 const db = getFirestore(app);
 const storage = getStorage(app);
 
@@ -38,7 +39,7 @@ let analytics = null;
 if (typeof window !== 'undefined') {
   try {
     analytics = getAnalytics(app);
-  } catch (error) {
+  } catch (error: any) {
     console.log('Analytics not available:', error.message);
   }
 }
@@ -47,32 +48,10 @@ if (typeof window !== 'undefined') {
 export { db, storage, analytics };
 export default app;
 
-// Firebase service functions for common operations
-export const firebaseService = {
-  // Firestore helpers (using v9 syntax)
-  firestore: {
-    collection: (collectionName) => collection(db, collectionName),
-    doc: (collectionName, docId) => doc(db, collectionName, docId),
-    add: (collectionName, data) => addDoc(collection(db, collectionName), data),
-    update: (collectionName, docId, data) => updateDoc(doc(db, collectionName, docId), data),
-    delete: (collectionName, docId) => deleteDoc(doc(db, collectionName, docId)),
-    get: (collectionName, docId) => getDoc(doc(db, collectionName, docId)),
-    query: (collectionName, ...queryConstraints) => query(collection(db, collectionName), ...queryConstraints)
-  },
-  
-  // Storage helpers
-  storage: {
-    ref: (path) => ref(storage, path),
-    upload: (path, file) => uploadBytes(ref(storage, path), file),
-    download: (path) => getDownloadURL(ref(storage, path)),
-    delete: (path) => deleteObject(ref(storage, path))
-  }
-};
-
 // Configuration validation function
 export const validateFirebaseConfig = () => {
   const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-  const missingFields = requiredFields.filter(field => !firebaseConfig[field] || firebaseConfig[field].includes('your-'));
+  const missingFields = requiredFields.filter(field => !firebaseConfig[field as keyof typeof firebaseConfig] || firebaseConfig[field as keyof typeof firebaseConfig].includes('your-'));
   
   if (missingFields.length > 0) {
     console.error('❌ Firebase configuration incomplete. Missing or invalid fields:', missingFields);

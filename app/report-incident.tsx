@@ -158,10 +158,10 @@ export default function ReportIncidentScreen() {
                 title={isSubmitting ? "Submitting..." : "Submit Report"}
                 onPress={handleSubmit}
                 variant="primary"
-                style={[
-                  styles.submitButton,
-                  { opacity: canSubmit ? 1 : 0.6 }
-                ]}
+                style={{
+                  ...styles.submitButton,
+                  opacity: canSubmit ? 1 : 0.6
+                }}
                 disabled={!canSubmit}
               />
             </View>

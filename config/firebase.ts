@@ -1,44 +1,22 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/db';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getFirestore } from 'firebase/firestore';
 
-// Your Firebase configuration
-// Replace these values with your actual Firebase project configuration
-// Get these values from Firebase Console > Project Settings > Your Apps
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "your-sender-id",
-  appId: "your-app-id"
+  apiKey: "AIzaSyB17SgQcBAJr1ZdNxHlyyWVu-2KO54xRCU",
+  authDomain: "resolvex-cb01e.firebaseapp.com",
+  projectId: "resolvex-cb01e",
+  storageBucket: "resolvex-cb01e.firebasestorage.app",
+  messagingSenderId: "83940149141",
+  appId: "1:83940149141:web:604675dcea46450925589c",
+  measurementId: "G-RE3EZ6F13Q"
 };
-
-// Validate configuration
-if (firebaseConfig.apiKey === "your-api-key") {
-  throw new Error(`
-    Firebase configuration not set up!
-    
-    Please:
-    1. Follow the Firebase Setup Guide in FIREBASE_SETUP.md
-    2. Copy config/firebase.example.ts to config/firebase.ts
-    3. Replace the placeholder values with your actual Firebase configuration
-    
-    Get your config from: https://console.firebase.google.com/
-  `);
-}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with AsyncStorage persistence
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage)
-});
-
 // Initialize Firestore
 const db = getFirestore(app);
 
-export { auth, db };
+export { db };
 export default app; 

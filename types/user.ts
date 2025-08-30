@@ -12,6 +12,18 @@ export interface User {
   lastActive: Date;
   isActive: boolean;
   permissions: string[];
+  profileImage?: string;
+  phoneNumber?: string;
+  location?: {
+    city?: string;
+    state?: string;
+    country?: string;
+  };
+  preferences?: {
+    notifications: boolean;
+    emailUpdates: boolean;
+    language: string;
+  };
 }
 
 export interface AdminUser extends User {

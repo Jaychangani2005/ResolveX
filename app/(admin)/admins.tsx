@@ -8,11 +8,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { createAdminUser } from '@/services/firebaseService';
 import { ActionButton } from '@/components/ActionButton';
+import { router } from 'expo-router';
 
 export default function AdminManagementScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newAdmin, setNewAdmin] = useState({
     name: '',
@@ -175,6 +176,32 @@ export default function AdminManagementScreen() {
                 <Text style={styles.statusActive}>🟢 Active</Text>
               </View>
             </View>
+          </View>
+
+          {/* Logout Button */}
+          <View style={styles.logoutContainer}>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={() => {
+                Alert.alert(
+                  'Logout',
+                  'Are you sure you want to logout?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                      text: 'Logout', 
+                      style: 'destructive',
+                      onPress: async () => {
+                        await logout();
+                        router.replace('/login');
+                      }
+                    }
+                  ]
+                );
+              }}
+            >
+              <Text style={styles.logoutButtonText}>🚪 Logout</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
 
@@ -504,5 +531,30 @@ const styles = StyleSheet.create({
   },
   createButton: {
     marginTop: 16,
+  },
+  logoutContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logoutButton: {
+    backgroundColor: '#DC143C',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 25,
+    minWidth: 200,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
 }); 

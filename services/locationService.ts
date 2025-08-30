@@ -97,7 +97,6 @@ export const getCurrentLocationWithAddress = async (): Promise<LocationInfo> => 
     // Get current position
     const location = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.High,
-      timeout: 15000,
       maximumAge: 10000,
     });
 

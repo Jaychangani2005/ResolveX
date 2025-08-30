@@ -1,14 +1,17 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { user, isLoading } = useAuth();
 
   const fadeAnim = new Animated.Value(0);
   const scaleAnim = new Animated.Value(0.8);
@@ -40,6 +43,27 @@ export default function SplashScreen() {
 
     Animated.sequence(animations).start();
   }, []);
+
+  // Handle authentication routing
+  useEffect(() => {
+    if (!isLoading) {
+      const timer = setTimeout(() => {
+        if (user) {
+          // User is authenticated, redirect based on role
+          if (user.role === 'admin' || user.role === 'super_user') {
+            router.replace('/(admin)/dashboard');
+          } else {
+            router.replace('/(tabs)');
+          }
+        } else {
+          // User is not authenticated, go to login
+          router.replace('/login');
+        }
+      }, 2000); // Show splash for 2 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [user, isLoading]);
 
   const spin = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -122,6 +146,9 @@ export default function SplashScreen() {
               <View style={[styles.dot, styles.dot2]} />
               <View style={[styles.dot, styles.dot3]} />
             </View>
+            <Text style={styles.loadingText}>
+              {isLoading ? 'Loading...' : 'Ready'}
+            </Text>
           </Animated.View>
         </View>
       </LinearGradient>
@@ -209,6 +236,7 @@ const styles = StyleSheet.create({
   loadingDots: {
     flexDirection: 'row',
     gap: 8,
+    marginBottom: 16,
   },
   dot: {
     width: 8,
@@ -224,5 +252,10 @@ const styles = StyleSheet.create({
   },
   dot3: {
     opacity: 1,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.8,
   },
 }); 

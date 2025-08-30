@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/Colors';
@@ -7,13 +7,15 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { getAdminStats } from '@/services/firebaseService';
+import { AdminUserManager } from '@/components/AdminUserManager';
+import { router } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
 export default function AdminDashboardScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalReports: 0,
@@ -201,6 +203,38 @@ export default function AdminDashboardScreen() {
                 <Text style={[styles.infoValue, { color: '#32CD32' }]}>🟢 Online</Text>
               </View>
             </View>
+          </View>
+
+          {/* User Management */}
+          <View style={styles.userManagementCard}>
+            <Text style={styles.sectionTitle}>👥 User Management</Text>
+            <AdminUserManager />
+          </View>
+
+          {/* Logout Button */}
+          <View style={styles.logoutContainer}>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={() => {
+                Alert.alert(
+                  'Logout',
+                  'Are you sure you want to logout?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                      text: 'Logout', 
+                      style: 'destructive',
+                      onPress: async () => {
+                        await logout();
+                        router.replace('/login');
+                      }
+                    }
+                  ]
+                );
+              }}
+            >
+              <Text style={styles.logoutButtonText}>🚪 Logout</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </LinearGradient>
@@ -406,5 +440,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1a1a2e',
+  },
+  userManagementCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  logoutContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logoutButton: {
+    backgroundColor: '#DC143C',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 25,
+    minWidth: 200,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
 }); 

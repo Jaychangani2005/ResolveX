@@ -8,7 +8,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { ActionButton } from '@/components/ActionButton';
 import { IncidentReportCard } from '@/components/IncidentReportCard';
-import { getUserIncidents } from '@/services/firebaseService';
+import { UserProfileManager } from '@/components/UserProfileManager';
+import { getUserIncidents, IncidentReport } from '@/services/firebaseService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -187,6 +188,12 @@ export default function ProfileScreen() {
                 <Text style={styles.actionText}>View Leaderboard</Text>
               </TouchableOpacity>
             </View>
+          </View>
+
+          {/* Profile Management */}
+          <View style={styles.profileManagementCard}>
+            <Text style={styles.profileManagementTitle}>Profile Management</Text>
+            <UserProfileManager />
           </View>
 
           {/* User's Incident Reports */}
@@ -472,6 +479,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#2E8B57',
+    textAlign: 'center',
+  },
+  profileManagementCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  profileManagementTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2E8B57',
+    marginBottom: 16,
     textAlign: 'center',
   },
   logoutContainer: {
