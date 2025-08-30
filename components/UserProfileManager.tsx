@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { ThemedView } from './ThemedView';
-import { ThemedText } from './ThemedText';
-import { FormInput } from './FormInput';
+import React, { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { ActionButton } from './ActionButton';
+import { FormInput } from './FormInput';
+import { ThemedText } from './ThemedText';
+import { ThemedView } from './ThemedView';
 
 interface ProfileFormData {
   name: string;
@@ -119,14 +119,14 @@ export const UserProfileManager: React.FC = () => {
           <View style={styles.fieldContainer}>
             <ThemedText style={styles.label}>Member Since</ThemedText>
             <Text style={styles.value}>
-              {user.createdAt.toLocaleDateString()}
+              {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
             </Text>
           </View>
 
           <View style={styles.fieldContainer}>
             <ThemedText style={styles.label}>Last Active</ThemedText>
             <Text style={styles.value}>
-              {user.lastActive.toLocaleDateString()}
+              {user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'N/A'}
             </Text>
           </View>
         </View>
