@@ -50,8 +50,10 @@ export default function SplashScreen() {
       const timer = setTimeout(() => {
         if (user) {
           // User is authenticated, redirect based on role
-          if (user.role === 'admin' || user.role === 'super_user') {
+          if (user.role === 'admin') {
             router.replace('/(admin)/dashboard');
+          } else if (user.role === 'conservation_ngos' || user.role === 'government_forestry' || user.role === 'researchers') {
+            router.replace('/(ngo)/dashboard');
           } else {
             router.replace('/(tabs)');
           }

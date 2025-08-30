@@ -85,14 +85,14 @@ export const firebaseSignIn = async (email: string, password: string): Promise<U
         const recoveredUserData: Omit<User, 'id'> = {
           email: firebaseUser.email || email,
           name: firebaseUser.displayName || email.split('@')[0] || 'User',
-          role: 'user',
+          role: 'coastal_communities',
           points: 0,
           badge: 'Newcomer',
           badgeEmoji: '🌱',
           createdAt: new Date(),
           lastActive: new Date(),
           isActive: true,
-          permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard'],
+          permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard', 'view_community_reports'],
           location: {
             city: '',
             state: '',
@@ -164,14 +164,14 @@ export const firebaseSignUp = async (email: string, password: string, name: stri
     const userData: Omit<User, 'id'> = {
       email: email.toLowerCase(),
       name: name.trim(),
-      role: 'user',
+      role: 'coastal_communities',
       points: 0,
       badge: 'Newcomer',
       badgeEmoji: '🌱',
       createdAt: new Date(),
       lastActive: new Date(),
       isActive: true,
-      permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard'],
+      permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard', 'view_community_reports'],
       location: {
         city: '',
         state: '',
@@ -246,7 +246,7 @@ export const adminSignIn = async (email: string, password: string): Promise<User
       throw new Error('User profile not found');
     }
     
-    if (userProfile.role !== 'admin' && userProfile.role !== 'super_user') {
+    if (userProfile.role !== 'admin') {
       throw new Error('Access denied. Admin privileges required.');
     }
     
@@ -392,11 +392,11 @@ export const getAdminStats = async (): Promise<AdminStats> => {
     
     usersSnapshot.forEach((doc) => {
       const userData = doc.data();
-      if (userData.role === 'admin' || userData.role === 'super_user') {
-        adminUsers++;
-      } else {
-        regularUsers++;
-      }
+          if (userData.role === 'admin') {
+      adminUsers++;
+    } else {
+      regularUsers++;
+    }
       totalPoints += userData.points || 0;
     });
     
@@ -436,7 +436,7 @@ export const createAdminUser = async (
   email: string,
   password: string,
   name: string,
-  role: 'admin' | 'super_user' | 'ngo'
+  role: 'admin' | 'conservation_ngos' | 'government_forestry' | 'researchers'
 ): Promise<User> => {
   try {
     console.log('👑 Creating admin user:', email);
@@ -451,38 +451,52 @@ export const createAdminUser = async (
       name: name.trim(),
       role: role,
       points: 0,
-      badge: role === 'ngo' ? 'NGO Partner' : 'Admin',
-      badgeEmoji: role === 'super_user' ? '👑' : role === 'ngo' ? '🌿' : '🛡️',
+      badge: role === 'admin' ? 'Admin' : role === 'conservation_ngos' ? 'NGO Partner' : role === 'government_forestry' ? 'Forestry Official' : 'Researcher',
+      badgeEmoji: role === 'admin' ? '🛡️' : role === 'conservation_ngos' ? '🌿' : role === 'government_forestry' ? '🌳' : '🔬',
       createdAt: new Date(),
       lastActive: new Date(),
       isActive: true,
-      permissions: role === 'super_user' 
+      permissions: role === 'admin'
         ? [
             'manage_users',
-            'manage_admins',
             'view_reports',
             'approve_reports',
-            'reject_reports',
             'manage_leaderboard',
             'view_analytics',
-            'system_settings',
-            'delete_users',
-            'ban_users'
+            'system_settings'
           ]
-        : role === 'ngo'
+        : role === 'conservation_ngos'
         ? [
             'view_incident_pictures',
             'view_incident_descriptions',
             'view_user_names',
             'view_ai_validation_status',
-            'view_incident_reports'
+            'view_incident_reports',
+            'view_analytics',
+            'submit_reports'
+          ]
+        : role === 'government_forestry'
+        ? [
+            'view_incident_pictures',
+            'view_incident_descriptions',
+            'view_user_names',
+            'view_ai_validation_status',
+            'view_incident_reports',
+            'view_analytics',
+            'approve_reports',
+            'manage_reports',
+            'submit_reports'
           ]
         : [
-            'manage_users',
-            'view_reports',
-            'approve_reports',
-            'manage_leaderboard',
-            'view_analytics'
+            'view_incident_pictures',
+            'view_incident_descriptions',
+            'view_user_names',
+            'view_ai_validation_status',
+            'view_incident_reports',
+            'view_analytics',
+            'export_data',
+            'submit_reports',
+            'view_research_data'
           ],
       location: {
         city: '',

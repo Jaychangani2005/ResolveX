@@ -86,10 +86,6 @@ export default function LoginScreen() {
     router.push('/signup');
   }, []);
 
-  const handleAdminLogin = useCallback(() => {
-    router.push('/admin-login');
-  }, []);
-
   // Memoized input change handlers
   const handleEmailChange = useCallback((text: string) => {
     setEmail(text);
@@ -173,28 +169,6 @@ export default function LoginScreen() {
               >
                 <Text style={styles.alternativeButtonText}>
                   Don't have an account? Sign up
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.alternativeButton}
-                onPress={handleAdminLogin}
-                disabled={isLoading}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.alternativeButtonText}>
-                  Admin Login
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.alternativeButton}
-                onPress={() => router.push('/ngo-login')}
-                disabled={isLoading}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.alternativeButtonText}>
-                  NGO Login
                 </Text>
               </TouchableOpacity>
             </View>

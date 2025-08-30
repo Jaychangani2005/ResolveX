@@ -19,8 +19,8 @@ export default function SettingsScreen() {
   const [autoSync, setAutoSync] = useState(false);
   const [darkMode, setDarkMode] = useState(colorScheme === 'dark');
 
-  // Only admin or super user can access this screen
-  if (!user || (user.role !== 'admin' && user.role !== 'super_user')) {
+  // Only admin can access this screen
+  if (!user || user.role !== 'admin') {
     return (
       <SafeAreaView style={styles.container}>
         <LinearGradient
@@ -74,9 +74,7 @@ export default function SettingsScreen() {
   };
 
   const getRoleBadge = () => {
-    if (user?.role === 'super_user') {
-      return { text: 'Super User', emoji: '👑', color: '#FFD700' };
-    } else if (user?.role === 'admin') {
+    if (user?.role === 'admin') {
       return { text: 'Admin', emoji: '🛡️', color: '#4169E1' };
     }
     return { text: 'User', emoji: '👤', color: '#32CD32' };

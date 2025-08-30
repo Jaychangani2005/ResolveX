@@ -10,8 +10,8 @@ export default function AdminTabLayout() {
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
 
-  // Redirect if not admin or super user
-  if (!user || (user.role !== 'admin' && user.role !== 'super_user')) {
+  // Redirect if not admin
+  if (!user || user.role !== 'admin') {
     return null;
   }
 
@@ -72,21 +72,7 @@ export default function AdminTabLayout() {
         }}
       />
       
-      {user.role === 'super_user' && (
-        <Tabs.Screen
-          name="admins"
-          options={{
-            title: 'Admins',
-            tabBarIcon: ({ color, focused }) => (
-              <Ionicons
-                name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'}
-                size={24}
-                color={color}
-              />
-            ),
-          }}
-        />
-      )}
+
       
       <Tabs.Screen
         name="settings"

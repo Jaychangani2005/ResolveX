@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'admin' | 'super_user' | 'ngo';
+export type UserRole = 'coastal_communities' | 'conservation_ngos' | 'government_forestry' | 'researchers' | 'admin';
 
 export interface User {
   id: string;
@@ -33,32 +33,61 @@ export interface AdminUser extends User {
     'view_reports',
     'approve_reports',
     'manage_leaderboard',
-    'view_analytics'
-  ];
-}
-
-export interface SuperUser extends User {
-  role: 'super_user';
-  permissions: [
-    'manage_users',
-    'manage_admins',
-    'view_reports',
-    'approve_reports',
-    'reject_reports',
-    'manage_leaderboard',
     'view_analytics',
-    'system_settings',
-    'delete_users',
-    'ban_users'
+    'system_settings'
   ];
 }
 
-export interface NormalUser extends User {
-  role: 'user';
+export interface CoastalCommunitiesUser extends User {
+  role: 'coastal_communities';
   permissions: [
     'submit_reports',
     'view_own_reports',
-    'view_leaderboard'
+    'view_leaderboard',
+    'view_community_reports'
+  ];
+}
+
+export interface ConservationNGOsUser extends User {
+  role: 'conservation_ngos';
+  permissions: [
+    'view_incident_pictures',
+    'view_incident_descriptions',
+    'view_user_names',
+    'view_ai_validation_status',
+    'view_incident_reports',
+    'view_analytics',
+    'submit_reports'
+  ];
+}
+
+export interface GovernmentForestryUser extends User {
+  role: 'government_forestry';
+  permissions: [
+    'view_incident_pictures',
+    'view_incident_descriptions',
+    'view_user_names',
+    'view_ai_validation_status',
+    'view_incident_reports',
+    'view_analytics',
+    'approve_reports',
+    'manage_reports',
+    'submit_reports'
+  ];
+}
+
+export interface ResearchersUser extends User {
+  role: 'researchers';
+  permissions: [
+    'view_incident_pictures',
+    'view_incident_descriptions',
+    'view_user_names',
+    'view_ai_validation_status',
+    'view_incident_reports',
+    'view_analytics',
+    'export_data',
+    'submit_reports',
+    'view_research_data'
   ];
 }
 
@@ -87,13 +116,4 @@ export interface IncidentReport {
   adminNotes?: string;
 }
 
-export interface NGOUser extends User {
-  role: 'ngo';
-  permissions: [
-    'view_incident_pictures',
-    'view_incident_descriptions',
-    'view_user_names',
-    'view_ai_validation_status',
-    'view_incident_reports'
-  ];
-} 
+ 

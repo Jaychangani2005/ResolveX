@@ -6,6 +6,8 @@
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "fix-names": "node ./scripts/fix-generic-names.js",
+    "seed-incidents": "node seed-incidents.js",
+    "seed-incidents-cjs": "node seed-incidents.cjs",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

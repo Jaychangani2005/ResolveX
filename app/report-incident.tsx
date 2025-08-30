@@ -8,12 +8,10 @@ import { ActionButton } from '@/components/ActionButton';
 import { PhotoCapture } from '@/components/PhotoCapture';
 import { LocationCapture } from '@/components/LocationCapture';
 import { FormInput } from '@/components/FormInput';
-import { MangroveDetectionDemo } from '@/components/MangroveDetectionDemo';
 import { submitIncidentReport } from '@/services/firebaseService';
 import { LocationInfo } from '@/services/locationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { MangroveDetectionResult } from '@/services/mangroveDetectionService';
 
 interface PhotoData {
   uri: string;
@@ -21,7 +19,6 @@ interface PhotoData {
   latitude: number;
   longitude: number;
   locationInfo: any;
-  mangroveResult?: MangroveDetectionResult;
 }
 
 export default function ReportIncidentScreen() {
@@ -53,19 +50,6 @@ export default function ReportIncidentScreen() {
     console.log(`   Latitude: ${data.latitude}`);
     console.log(`   Longitude: ${data.longitude}`);
     console.log(`   Location Info:`, data.locationInfo);
-    
-    // Log mangrove detection result if available
-    if (data.mangroveResult) {
-      console.log('🌿 MANGROVE DETECTION DATA:');
-      console.log(`   Is in mangrove area: ${data.mangroveResult.isInMangroveArea}`);
-      if (data.mangroveResult.isInMangroveArea) {
-        console.log(`   Region: ${data.mangroveResult.regionName}`);
-        console.log(`   Confidence: ${data.mangroveResult.confidence}`);
-      } else {
-        console.log(`   Nearest mangrove: ${data.mangroveResult.regionName}`);
-        console.log(`   Distance: ${data.mangroveResult.distanceToNearestMangrove?.toFixed(2)} km`);
-      }
-    }
     
     // Store coordinates in separate variables
     const photoLatitude = data.latitude;
@@ -115,6 +99,15 @@ export default function ReportIncidentScreen() {
       ]
     );
   }, [logout]);
+
+  const clearPhotoData = useCallback(() => {
+    setPhotoUri('');
+    setPhotoData(null);
+    setLocation(null);
+    setLocationInfo(null);
+    setDescription('');
+    setUploadProgress('');
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!user) {
@@ -204,12 +197,7 @@ export default function ReportIncidentScreen() {
             text: 'OK',
             onPress: () => {
               // Reset form and go back to home
-              setDescription('');
-              setPhotoUri('');
-              setPhotoData(null);
-              setLocation(null);
-              setLocationInfo(null);
-              setUploadProgress('');
+              clearPhotoData();
               router.back();
             }
           }
@@ -221,7 +209,7 @@ export default function ReportIncidentScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [user, photoUri, photoData, locationInfo]);
+  }, [user, photoUri, photoData, locationInfo, clearPhotoData]);
 
   // Memoized validation to prevent unnecessary re-renders
   const canSubmit = useMemo(() => {
@@ -240,7 +228,8 @@ export default function ReportIncidentScreen() {
               style={styles.backButton} 
               onPress={() => router.back()}
             >
-              <Text style={styles.backButtonText}>← Back</Text>
+              <Ionicons name="arrow-back" size={20} color="#2E8B57" />
+              <Text style={styles.backButtonText}>Back</Text>
             </TouchableOpacity>
             
             {/* Logout Button - Top Right */}
@@ -258,19 +247,50 @@ export default function ReportIncidentScreen() {
           </View>
 
           <View style={styles.form}>
-            {/* Mangrove Detection Demo */}
-            <MangroveDetectionDemo />
-            
+            {/* Photo Capture */}
             <PhotoCapture 
               onPhotoSelected={handlePhotoSelected}
               onPhotoData={handlePhotoData}
             />
+            
+            {/* GPS Location Display */}
+            {photoData && photoData.latitude && photoData.longitude && (
+              <View style={styles.locationDisplay}>
+                <Text style={[styles.locationTitle, { color: colors.primary }]}>
+                  📍 GPS Location
+                </Text>
+                <View style={styles.coordinatesContainer}>
+                  <Text style={[styles.coordinateText, { color: colors.text }]}>
+                    Latitude: {photoData.latitude.toFixed(6)}
+                  </Text>
+                  <Text style={[styles.coordinateText, { color: colors.text }]}>
+                    Longitude: {photoData.longitude.toFixed(6)}
+                  </Text>
+                </View>
+                {photoData.locationInfo?.fullAddress && (
+                  <Text style={[styles.addressText, { color: colors.text }]}>
+                    Location: {photoData.locationInfo.fullAddress}
+                  </Text>
+                )}
+              </View>
+            )}
             
             {/* Additional Location Capture (Optional) */}
             <LocationCapture 
               onLocationCaptured={handleLocationCaptured}
               onLocationInfo={handleLocationInfo}
             />
+            
+            {/* Clear Photo Data Button */}
+            {photoData && (
+              <TouchableOpacity 
+                style={styles.clearButton} 
+                onPress={clearPhotoData}
+              >
+                <Ionicons name="trash-outline" size={18} color="#DC143C" />
+                <Text style={styles.clearButtonText}>Clear Photo Data</Text>
+              </TouchableOpacity>
+            )}
             
             {/* Additional Description Field (Optional) */}
             <FormInput
@@ -331,7 +351,9 @@ const styles = StyleSheet.create({
   backButton: {
     position: 'absolute',
     top: 0,
-    left: 20,
+    left: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 10,
     zIndex: 1,
   },
@@ -339,11 +361,12 @@ const styles = StyleSheet.create({
     color: '#2E8B57',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 4,
   },
   logoutButton: {
     position: 'absolute',
     top: 0,
-    right: 20,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(220, 20, 60, 0.1)',
@@ -373,6 +396,50 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
+  },
+  locationDisplay: {
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  locationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  coordinatesContainer: {
+    marginBottom: 8,
+  },
+  coordinateText: {
+    fontSize: 14,
+    marginBottom: 4,
+    fontFamily: 'monospace',
+  },
+  addressText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    opacity: 0.8,
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(220, 20, 60, 0.1)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DC143C',
+    marginBottom: 20,
+  },
+  clearButtonText: {
+    color: '#DC143C',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   submitContainer: {
     marginTop: 20,

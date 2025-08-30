@@ -36,8 +36,8 @@ export default function UserManagementScreen() {
     }
   };
 
-  // Only admin or super user can access this screen
-  if (!user || (user.role !== 'admin' && user.role !== 'super_user')) {
+  // Only admin can access this screen
+  if (!user || user.role !== 'admin') {
     return (
       <SafeAreaView style={styles.container}>
         <LinearGradient
@@ -75,12 +75,18 @@ export default function UserManagementScreen() {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'super_user':
-        return { text: 'Super User', emoji: '👑', color: '#FFD700' };
       case 'admin':
         return { text: 'Admin', emoji: '🛡️', color: '#4169E1' };
+      case 'conservation_ngos':
+        return { text: 'NGO Partner', emoji: '🌿', color: '#32CD32' };
+      case 'government_forestry':
+        return { text: 'Forestry Official', emoji: '🌳', color: '#8B4513' };
+      case 'researchers':
+        return { text: 'Researcher', emoji: '🔬', color: '#9932CC' };
+      case 'coastal_communities':
+        return { text: 'Coastal Community', emoji: '🌊', color: '#4169E1' };
       default:
-        return { text: 'User', emoji: '👤', color: '#32CD32' };
+        return { text: 'User', emoji: '👤', color: '#666' };
     }
   };
 
@@ -117,7 +123,7 @@ export default function UserManagementScreen() {
             <View style={styles.statItem}>
               <Ionicons name="shield-checkmark" size={24} color="#FFD700" />
               <Text style={styles.statNumber}>
-                {users.filter(u => u.role === 'admin' || u.role === 'super_user').length}
+                {users.filter(u => u.role === 'admin').length}
               </Text>
               <Text style={styles.statLabel}>Admins</Text>
             </View>

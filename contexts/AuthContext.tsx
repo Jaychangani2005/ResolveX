@@ -1,5 +1,4 @@
 import {
-    adminSignIn,
     firebaseSignIn,
     firebaseSignOut,
     firebaseSignUp,
@@ -17,8 +16,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
-  adminLogin: (email: string, password: string) => Promise<boolean>;
-  ngoLogin: (email: string, password: string) => Promise<boolean>;
   updateProfile: (updates: Partial<Omit<User, 'id' | 'email' | 'role' | 'createdAt'>>) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -70,14 +67,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Navigate based on user role (non-blocking)
             setTimeout(() => {
               console.log('🧭 Restoring user session, navigating to appropriate dashboard for role:', userProfile.role);
-              if (userProfile.role === 'admin' || userProfile.role === 'super_user') {
+              if (userProfile.role === 'admin') {
                 console.log('🛡️ Restoring admin session, redirecting to admin dashboard');
                 router.replace('/(admin)/dashboard');
-              } else if (userProfile.role === 'ngo') {
-                console.log('🏢 Restoring NGO session, redirecting to NGO dashboard');
+              } else if (userProfile.role === 'conservation_ngos' || userProfile.role === 'government_forestry' || userProfile.role === 'researchers') {
+                console.log('🏢 Restoring professional user session, redirecting to NGO dashboard');
                 router.replace('/(ngo)/dashboard');
               } else {
-                console.log('👤 Restoring regular user session, redirecting to main tabs');
+                console.log('👤 Restoring coastal community user session, redirecting to main tabs');
                 router.replace('/(tabs)');
               }
             }, 100);
@@ -165,14 +162,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Navigate based on user role
       setTimeout(() => {
         console.log('🧭 Navigating user to appropriate dashboard based on role:', userProfile.role);
-        if (userProfile.role === 'admin' || userProfile.role === 'super_user') {
+        if (userProfile.role === 'admin') {
           console.log('🛡️ Redirecting admin user to admin dashboard');
           router.replace('/(admin)/dashboard');
-        } else if (userProfile.role === 'ngo') {
-          console.log('🏢 Redirecting NGO user to NGO dashboard');
+        } else if (userProfile.role === 'conservation_ngos' || userProfile.role === 'government_forestry' || userProfile.role === 'researchers') {
+          console.log('🏢 Redirecting professional user to NGO dashboard');
           router.replace('/(ngo)/dashboard');
         } else {
-          console.log('👤 Redirecting regular user to main tabs');
+          console.log('👤 Redirecting coastal community user to main tabs');
           router.replace('/(tabs)');
         }
       }, 100);
@@ -201,9 +198,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       console.log('🎉 Signup complete! User should now be redirected to main app');
       
-      // Navigate based on user role (new users are always 'user' role)
+      // Navigate based on user role (new users are always 'coastal_communities' role)
       setTimeout(() => {
-        console.log('🧭 Navigating new user to main tabs');
+        console.log('🧭 Navigating new coastal community user to main tabs');
         router.replace('/(tabs)');
       }, 100);
       
@@ -216,71 +213,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [saveUserToStorage]);
 
-  // Optimized admin login
-  const adminLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
-    try {
-      console.log('🔐 Attempting admin login for:', email);
-      
-      setIsLoading(true);
-      const userProfile = await adminSignIn(email, password);
-      console.log('✅ Admin login successful, user profile:', userProfile);
-      
-      // Save user to local storage and set state
-      await saveUserToStorage(userProfile);
-      setUser(userProfile);
-      
-      console.log('🎉 Admin login complete! User should now be redirected to admin dashboard');
-      
-      // Navigate admin user to admin dashboard
-      setTimeout(() => {
-        console.log('🛡️ Redirecting admin user to admin dashboard');
-        router.replace('/(admin)/dashboard');
-      }, 100);
-      
-      return true;
-    } catch (error: any) {
-      console.error('❌ Admin login error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [saveUserToStorage]);
 
-  // Optimized NGO login
-  const ngoLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
-    try {
-      console.log('🏢 Attempting NGO login for:', email);
-      
-      setIsLoading(true);
-      const userProfile = await firebaseSignIn(email, password);
-      
-      // Check if user has NGO role
-      if (userProfile.role !== 'ngo') {
-        throw new Error('Access denied. NGO privileges required.');
-      }
-      
-      console.log('✅ NGO login successful, user profile:', userProfile);
-      
-      // Save user to local storage and set state
-      await saveUserToStorage(userProfile);
-      setUser(userProfile);
-      
-      console.log('🎉 NGO login complete! User should now be redirected to NGO dashboard');
-      
-      // Navigate NGO user to NGO dashboard
-      setTimeout(() => {
-        console.log('🏢 Redirecting NGO user to NGO dashboard');
-        router.replace('/(ngo)/dashboard');
-      }, 100);
-      
-      return true;
-    } catch (error: any) {
-      console.error('❌ NGO login error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [saveUserToStorage]);
+
+
 
   // Optimized logout
   const logout = useCallback(async (): Promise<void> => {
@@ -353,8 +288,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     logout,
     signup,
-    adminLogin,
-    ngoLogin,
     updateProfile,
     refreshUser,
   };

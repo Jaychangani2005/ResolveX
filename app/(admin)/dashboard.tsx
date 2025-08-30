@@ -40,9 +40,7 @@ export default function AdminDashboardScreen() {
   };
 
   const getRoleBadge = () => {
-    if (user?.role === 'super_user') {
-      return { text: 'Super User', emoji: '👑', color: '#FFD700' };
-    } else if (user?.role === 'admin') {
+    if (user?.role === 'admin') {
       return { text: 'Admin', emoji: '🛡️', color: '#4169E1' };
     }
     return { text: 'User', emoji: '👤', color: '#32CD32' };

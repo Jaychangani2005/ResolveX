@@ -15,7 +15,7 @@ export const AdminUserManager: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
-    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_user')) {
+    if (currentUser && currentUser.role === 'admin') {
       loadUsers();
     }
   }, [currentUser]);
@@ -61,10 +61,6 @@ export const AdminUserManager: React.FC = () => {
         updates = { isActive: false };
         break;
       case 'promote':
-        if (currentUser.role !== 'super_user') {
-          Alert.alert('Error', 'Only super users can promote users to admin');
-          return;
-        }
         message = `Are you sure you want to promote ${targetUser.name} to admin?`;
         updates = { 
           role: 'admin',
@@ -73,19 +69,16 @@ export const AdminUserManager: React.FC = () => {
             'view_reports',
             'approve_reports',
             'manage_leaderboard',
-            'view_analytics'
+            'view_analytics',
+            'system_settings'
           ]
         };
         break;
       case 'demote':
-        if (currentUser.role !== 'super_user') {
-          Alert.alert('Error', 'Only super users can demote admins');
-          return;
-        }
-        message = `Are you sure you want to demote ${targetUser.name} to regular user?`;
+        message = `Are you sure you want to demote ${targetUser.name} to coastal community user?`;
         updates = { 
-          role: 'user',
-          permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard']
+          role: 'coastal_communities',
+          permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard', 'view_community_reports']
         };
         break;
       default:
@@ -129,7 +122,7 @@ export const AdminUserManager: React.FC = () => {
     return isActive ? '🟢' : '🔴';
   };
 
-  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'super_user')) {
+  if (!currentUser || currentUser.role !== 'admin') {
     return (
       <ThemedView style={styles.container}>
         <ThemedText style={styles.errorText}>Access denied. Admin privileges required.</ThemedText>
@@ -167,7 +160,7 @@ export const AdminUserManager: React.FC = () => {
           </View>
           <View style={styles.statItem}>
             <ThemedText style={styles.statNumber}>
-              {filteredUsers.filter(u => u.role === 'admin' || u.role === 'super_user').length}
+              {filteredUsers.filter(u => u.role === 'admin').length}
             </ThemedText>
             <ThemedText style={styles.statLabel}>Admins</ThemedText>
           </View>
@@ -216,7 +209,7 @@ export const AdminUserManager: React.FC = () => {
                   </View>
 
                   <View style={styles.userActions}>
-                    {user.role === 'user' && (
+                    {(user.role === 'coastal_communities' || user.role === 'conservation_ngos' || user.role === 'government_forestry' || user.role === 'researchers') && (
                       <TouchableOpacity
                         style={[styles.actionButton, styles.promoteButton]}
                         onPress={() => handleUserAction('promote', user)}
@@ -225,12 +218,12 @@ export const AdminUserManager: React.FC = () => {
                       </TouchableOpacity>
                     )}
                     
-                    {user.role === 'admin' && currentUser.role === 'super_user' && (
+                    {user.role === 'admin' && (
                       <TouchableOpacity
                         style={[styles.actionButton, styles.demoteButton]}
                         onPress={() => handleUserAction('demote', user)}
                       >
-                        <Text style={styles.actionButtonText}>Demote to User</Text>
+                        <Text style={styles.actionButtonText}>Demote to Coastal Community</Text>
                       </TouchableOpacity>
                     )}
 

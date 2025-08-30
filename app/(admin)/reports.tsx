@@ -26,8 +26,8 @@ export default function ReportsScreen() {
     }
   }, [user]);
 
-  // Only admin or super user can access this screen
-  if (!user || (user.role !== 'admin' && user.role !== 'super_user')) {
+  // Only admin can access this screen
+  if (!user || user.role !== 'admin') {
     return (
       <SafeAreaView style={styles.container}>
         <LinearGradient
