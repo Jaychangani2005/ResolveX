@@ -8,10 +8,12 @@ import { ActionButton } from '@/components/ActionButton';
 import { PhotoCapture } from '@/components/PhotoCapture';
 import { LocationCapture } from '@/components/LocationCapture';
 import { FormInput } from '@/components/FormInput';
+import { MangroveDetectionDemo } from '@/components/MangroveDetectionDemo';
 import { submitIncidentReport } from '@/services/firebaseService';
 import { LocationInfo } from '@/services/locationService';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { MangroveDetectionResult } from '@/services/mangroveDetectionService';
 
 interface PhotoData {
   uri: string;
@@ -19,6 +21,7 @@ interface PhotoData {
   latitude: number;
   longitude: number;
   locationInfo: any;
+  mangroveResult?: MangroveDetectionResult;
 }
 
 export default function ReportIncidentScreen() {
@@ -28,6 +31,7 @@ export default function ReportIncidentScreen() {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
   
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -49,6 +53,19 @@ export default function ReportIncidentScreen() {
     console.log(`   Latitude: ${data.latitude}`);
     console.log(`   Longitude: ${data.longitude}`);
     console.log(`   Location Info:`, data.locationInfo);
+    
+    // Log mangrove detection result if available
+    if (data.mangroveResult) {
+      console.log('🌿 MANGROVE DETECTION DATA:');
+      console.log(`   Is in mangrove area: ${data.mangroveResult.isInMangroveArea}`);
+      if (data.mangroveResult.isInMangroveArea) {
+        console.log(`   Region: ${data.mangroveResult.regionName}`);
+        console.log(`   Confidence: ${data.mangroveResult.confidence}`);
+      } else {
+        console.log(`   Nearest mangrove: ${data.mangroveResult.regionName}`);
+        console.log(`   Distance: ${data.mangroveResult.distanceToNearestMangrove?.toFixed(2)} km`);
+      }
+    }
     
     // Store coordinates in separate variables
     const photoLatitude = data.latitude;
@@ -121,6 +138,7 @@ export default function ReportIncidentScreen() {
     }
 
     setIsSubmitting(true);
+    setUploadProgress('Creating incident report...');
 
     try {
       // Prepare enhanced location data combining photo location and additional location info
@@ -153,15 +171,19 @@ export default function ReportIncidentScreen() {
       console.log(`   State: ${enhancedLocation.state}`);
       console.log(`   Country: ${enhancedLocation.country}`);
 
+      setUploadProgress('Uploading photo to cloud storage...');
+      
       // Submit to Firebase with enhanced location data
       const reportId = await submitIncidentReport(
         user.id,
         user.email,
         user.name,
-        photoUri, // In a real app, you'd upload this to Firebase Storage first
+        photoUri,
         enhancedLocation,
         photoData.description.trim()
       );
+      
+      setUploadProgress('Finalizing report...');
       
       console.log('✅ INCIDENT REPORT SUBMITTED TO FIRESTORE:');
       console.log(`   Report ID: ${reportId}`);
@@ -187,6 +209,7 @@ export default function ReportIncidentScreen() {
               setPhotoData(null);
               setLocation(null);
               setLocationInfo(null);
+              setUploadProgress('');
               router.back();
             }
           }
@@ -235,6 +258,9 @@ export default function ReportIncidentScreen() {
           </View>
 
           <View style={styles.form}>
+            {/* Mangrove Detection Demo */}
+            <MangroveDetectionDemo />
+            
             <PhotoCapture 
               onPhotoSelected={handlePhotoSelected}
               onPhotoData={handlePhotoData}
@@ -259,6 +285,14 @@ export default function ReportIncidentScreen() {
             />
 
             <View style={styles.submitContainer}>
+              {uploadProgress ? (
+                <View style={styles.progressContainer}>
+                  <Text style={[styles.progressText, { color: colors.primary }]}>
+                    {uploadProgress}
+                  </Text>
+                </View>
+              ) : null}
+              
               <ActionButton
                 title={isSubmitting ? "Submitting..." : "Submit Report"}
                 onPress={handleSubmit}
@@ -346,5 +380,19 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     minWidth: 200,
+  },
+  progressContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  progressText: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 }); 

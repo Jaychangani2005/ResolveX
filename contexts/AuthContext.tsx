@@ -1,16 +1,15 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { router } from 'expo-router';
-import { 
-  firebaseSignIn, 
-  firebaseSignUp, 
-  firebaseSignOut, 
-  getCurrentUser,
-  getUserProfile,
-  adminSignIn,
-  updateUserProfile,
-  User 
+import {
+    adminSignIn,
+    firebaseSignIn,
+    firebaseSignOut,
+    firebaseSignUp,
+    getUserProfile,
+    updateUserProfile
 } from '@/services/firebaseService';
+import { User } from '@/types/user';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
   user: User | null;
@@ -19,6 +18,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   adminLogin: (email: string, password: string) => Promise<boolean>;
+  ngoLogin: (email: string, password: string) => Promise<boolean>;
+  governmentLogin: (email: string, password: string) => Promise<boolean>;
   updateProfile: (updates: Partial<Omit<User, 'id' | 'email' | 'role' | 'createdAt'>>) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -76,6 +77,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
               } else if (userProfile.role === 'ngo') {
                 console.log('🏢 Restoring NGO session, redirecting to NGO dashboard');
                 router.replace('/(ngo)/dashboard');
+              } else if (userProfile.role === 'government') {
+                console.log('🏛️ Restoring Government session, redirecting to Government dashboard');
+                router.replace('/(government)/dashboard');
               } else {
                 console.log('👤 Restoring regular user session, redirecting to main tabs');
                 router.replace('/(tabs)');
@@ -102,7 +106,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Optimized user storage with batch operations
   const saveUserToStorage = useCallback(async (userData: User) => {
     try {
-      const storageData = [
+      const storageData: [string, string][] = [
         [USER_STORAGE_KEY, JSON.stringify(userData)],
         [SESSION_STORAGE_KEY, JSON.stringify({
           timestamp: new Date().getTime()
@@ -145,6 +149,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Save to storage in background (non-blocking)
       saveUserToStorage(userProfile).catch(console.error);
+      
+      // Refresh user data to ensure we have the latest information
+      setTimeout(async () => {
+        try {
+          const refreshedUser = await getUserProfile(userProfile.id);
+          if (refreshedUser) {
+            setUser(refreshedUser);
+            await saveUserToStorage(refreshedUser);
+            console.log('🔄 User data refreshed after login');
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not refresh user data:', error);
+        }
+      }, 1000);
       
       console.log('🎉 Login complete! User should now be redirected to main app');
       
@@ -232,6 +250,78 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [saveUserToStorage]);
 
+  // Optimized NGO login
+  const ngoLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
+    try {
+      console.log('🏢 Attempting NGO login for:', email);
+      
+      setIsLoading(true);
+      const userProfile = await firebaseSignIn(email, password);
+      
+      // Check if user has NGO role
+      if (userProfile.role !== 'ngo') {
+        throw new Error('Access denied. NGO privileges required.');
+      }
+      
+      console.log('✅ NGO login successful, user profile:', userProfile);
+      
+      // Save user to local storage and set state
+      await saveUserToStorage(userProfile);
+      setUser(userProfile);
+      
+      console.log('🎉 NGO login complete! User should now be redirected to NGO dashboard');
+      
+      // Navigate NGO user to NGO dashboard
+      setTimeout(() => {
+        console.log('🏢 Redirecting NGO user to NGO dashboard');
+        router.replace('/(ngo)/dashboard');
+      }, 100);
+      
+      return true;
+    } catch (error: any) {
+      console.error('❌ NGO login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [saveUserToStorage]);
+
+  // Optimized Government login
+  const governmentLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
+    try {
+      console.log('🏛️ Attempting Government login for:', email);
+      
+      setIsLoading(true);
+      const userProfile = await firebaseSignIn(email, password);
+      
+      // Check if user has Government role
+      if (userProfile.role !== 'government') {
+        throw new Error('Access denied. Government privileges required.');
+      }
+      
+      console.log('✅ Government login successful, user profile:', userProfile);
+      
+      // Save user to local storage and set state
+      await saveUserToStorage(userProfile);
+      setUser(userProfile);
+      
+      console.log('🎉 Government login complete! User should now be redirected to Government dashboard');
+      
+      // Navigate Government user to Government dashboard
+      setTimeout(() => {
+        console.log('🏛️ Redirecting Government user to Government dashboard');
+        router.replace('/(government)/dashboard');
+      }, 100);
+      
+      return true;
+    } catch (error: any) {
+      console.error('❌ Government login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [saveUserToStorage]);
+
   // Optimized logout
   const logout = useCallback(async (): Promise<void> => {
     try {
@@ -304,6 +394,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     signup,
     adminLogin,
+    ngoLogin,
+    governmentLogin,
     updateProfile,
     refreshUser,
   };

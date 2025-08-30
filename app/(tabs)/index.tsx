@@ -26,6 +26,23 @@ export default function HomeScreen() {
     loadCommunityStats();
   }, []);
 
+  // Debug: Log user data when component renders
+  useEffect(() => {
+    if (user) {
+      console.log('🔍 USER DATA DEBUG:', {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        hasName: !!user.name,
+        nameType: typeof user.name,
+        nameLength: user.name ? user.name.length : 0
+      });
+    } else {
+      console.log('🔍 USER DATA DEBUG: No user data available');
+    }
+  }, [user]);
+
   const loadCommunityStats = async () => {
     try {
       const stats = await getCommunityStats();
@@ -97,7 +114,21 @@ export default function HomeScreen() {
             
             {user && (
               <View style={styles.welcomeCard}>
-                <Text style={styles.welcomeText}>Welcome back, {user.name}! 👋</Text>
+                <View style={styles.welcomeHeader}>
+                  <Text style={styles.welcomeText}>Welcome back, {user.name || 'User'}! 👋</Text>
+                  {user.name === 'User' && (
+                    <TouchableOpacity 
+                      style={styles.editNameButton}
+                      onPress={() => Alert.alert(
+                        'Update Name',
+                        'Your name appears to be generic. Please go to Profile to update your name.',
+                        [{ text: 'OK', onPress: () => router.push('/profile') }]
+                      )}
+                    >
+                      <Ionicons name="create-outline" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
                 <View style={styles.userStats}>
                   <Text style={styles.userPoints}>{user.points} points</Text>
                   <Text style={styles.userBadge}>{user.badgeEmoji} {user.badge}</Text>
@@ -259,7 +290,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#fff',
+    marginBottom: 0,
+  },
+  welcomeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 12,
+  },
+  editNameButton: {
+    marginLeft: 8,
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   userStats: {
     flexDirection: 'row',

@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { IncidentReportCard } from '@/components/IncidentReportCard';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { IncidentReportCard } from '@/components/IncidentReportCard';
-import { getAllIncidentsForNGO } from '@/services/firebaseService';
+import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
-import { IncidentReport } from '@/services/firebaseService';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { getAllIncidentsForNGO, IncidentReport } from '@/services/firebaseService';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NGODashboardScreen() {
   const [incidents, setIncidents] = useState<IncidentReport[]>([]);
@@ -18,7 +18,7 @@ export default function NGODashboardScreen() {
   
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const loadIncidents = async () => {
     try {
@@ -37,6 +37,29 @@ export default function NGODashboardScreen() {
     setRefreshing(true);
     await loadIncidents();
     setRefreshing(false);
+  };
+  
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/login');
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   useEffect(() => {
@@ -66,12 +89,25 @@ export default function NGODashboardScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <ThemedView style={styles.header}>
-        <ThemedText style={[styles.title, { color: colors.text }]}>
-          🌿 NGO Dashboard
-        </ThemedText>
-        <ThemedText style={[styles.subtitle, { color: colors.icon }]}>
-          Incident Reports Overview
-        </ThemedText>
+        <View style={styles.headerTop}>
+          <View style={styles.headerContent}>
+            <ThemedText style={[styles.title, { color: colors.text }]}>
+              🌿 NGO Dashboard
+            </ThemedText>
+            <ThemedText style={[styles.subtitle, { color: colors.icon }]}>
+              Incident Reports Overview
+            </ThemedText>
+          </View>
+          
+          {/* Logout Button */}
+          <TouchableOpacity 
+            style={[styles.logoutButton, { backgroundColor: 'rgba(220, 20, 60, 0.1)' }]}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#DC143C" />
+            <ThemedText style={styles.logoutButtonText}>Logout</ThemedText>
+          </TouchableOpacity>
+        </View>
       </ThemedView>
 
       {/* Statistics */}
@@ -146,6 +182,30 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 10,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DC143C',
+    marginLeft: 16,
+  },
+  logoutButtonText: {
+    color: '#DC143C',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -154,6 +214,17 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     opacity: 0.8,
+  },
+  logoutButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 16,
+  },
+  logoutButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
