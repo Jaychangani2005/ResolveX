@@ -19,6 +19,7 @@ interface AuthContextType {
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   adminLogin: (email: string, password: string) => Promise<boolean>;
   ngoLogin: (email: string, password: string) => Promise<boolean>;
+  governmentLogin: (email: string, password: string) => Promise<boolean>;
   updateProfile: (updates: Partial<Omit<User, 'id' | 'email' | 'role' | 'createdAt'>>) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -76,6 +77,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
               } else if (userProfile.role === 'ngo') {
                 console.log('🏢 Restoring NGO session, redirecting to NGO dashboard');
                 router.replace('/(ngo)/dashboard');
+              } else if (userProfile.role === 'government') {
+                console.log('🏛️ Restoring Government session, redirecting to Government dashboard');
+                router.replace('/(government)/dashboard');
               } else {
                 console.log('👤 Restoring regular user session, redirecting to main tabs');
                 router.replace('/(tabs)');
@@ -268,6 +272,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [saveUserToStorage]);
 
+  // Optimized Government login
+  const governmentLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
+    try {
+      console.log('🏛️ Attempting Government login for:', email);
+      
+      setIsLoading(true);
+      const userProfile = await firebaseSignIn(email, password);
+      
+      // Check if user has Government role
+      if (userProfile.role !== 'government') {
+        throw new Error('Access denied. Government privileges required.');
+      }
+      
+      console.log('✅ Government login successful, user profile:', userProfile);
+      
+      // Save user to local storage and set state
+      await saveUserToStorage(userProfile);
+      setUser(userProfile);
+      
+      console.log('🎉 Government login complete! User should now be redirected to Government dashboard');
+      
+      // Navigate Government user to Government dashboard
+      setTimeout(() => {
+        console.log('🏛️ Redirecting Government user to Government dashboard');
+        router.replace('/(government)/dashboard');
+      }, 100);
+      
+      return true;
+    } catch (error: any) {
+      console.error('❌ Government login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [saveUserToStorage]);
+
   // Optimized logout
   const logout = useCallback(async (): Promise<void> => {
     try {
@@ -341,6 +381,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signup,
     adminLogin,
     ngoLogin,
+    governmentLogin,
     updateProfile,
     refreshUser,
   };

@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { IncidentReportCard } from '@/components/IncidentReportCard';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { IncidentReportCard } from '@/components/IncidentReportCard';
-import { getAllIncidentsForNGO } from '@/services/firebaseService';
+import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { getAllIncidentsForNGO } from '@/services/firebaseService';
 import { IncidentReport } from '@/types/user';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function NGODashboardScreen() {
+export default function GovernmentDashboardScreen() {
   const [incidents, setIncidents] = useState<IncidentReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -54,7 +54,7 @@ export default function NGODashboardScreen() {
           onPress: async () => {
             try {
               await logout();
-              console.log('✅ NGO user logged out successfully');
+              console.log('✅ Government user logged out successfully');
             } catch (error) {
               console.error('❌ Logout error:', error);
               Alert.alert('Error', 'Failed to logout. Please try again.');
@@ -69,15 +69,15 @@ export default function NGODashboardScreen() {
     loadIncidents();
   }, []);
 
-  // Check if user has NGO permissions
+  // Check if user has Government permissions
   useEffect(() => {
-    if (user && user.role !== 'ngo') {
+    if (user && user.role !== 'government') {
       Alert.alert('Access Denied', 'You do not have permission to access this area.');
       router.replace('/(tabs)');
     }
   }, [user]);
 
-  if (!user || user.role !== 'ngo') {
+  if (!user || user.role !== 'government') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <ThemedView style={styles.centerContainer}>
@@ -92,23 +92,12 @@ export default function NGODashboardScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <ThemedView style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerLeft}>
-            <ThemedText style={[styles.title, { color: colors.text }]}>
-              🌿 NGO Dashboard
-            </ThemedText>
-            <ThemedText style={[styles.subtitle, { color: colors.icon }]}>
-              Incident Reports Overview
-            </ThemedText>
-          </View>
-          <TouchableOpacity
-            style={[styles.logoutButton, { backgroundColor: colors.primary }]}
-            onPress={handleLogout}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.logoutButtonText}>🚪 Logout</Text>
-          </TouchableOpacity>
-        </View>
+        <ThemedText style={[styles.title, { color: colors.text }]}>
+          🏛️ Government Dashboard
+        </ThemedText>
+        <ThemedText style={[styles.subtitle, { color: colors.icon }]}>
+          Incident Reports & Analytics Overview
+        </ThemedText>
       </ThemedView>
 
       {/* Statistics */}
@@ -135,6 +124,14 @@ export default function NGODashboardScreen() {
           </ThemedText>
           <ThemedText style={[styles.statLabel, { color: colors.icon }]}>
             Resolved
+          </ThemedText>
+        </View>
+        <View style={styles.statItem}>
+          <ThemedText style={[styles.statNumber, { color: colors.primary }]}>
+            {incidents.filter(incident => incident.status === 'pending').length}
+          </ThemedText>
+          <ThemedText style={[styles.statLabel, { color: colors.icon }]}>
+            Pending
           </ThemedText>
         </View>
       </ThemedView>
@@ -183,14 +180,6 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 10,
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerLeft: {
-    flex: 1,
-  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -200,26 +189,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     opacity: 0.8,
   },
-  logoutButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginLeft: 16,
-  },
-  logoutButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingHorizontal: 20,
     paddingVertical: 15,
     marginBottom: 10,
+    flexWrap: 'wrap',
   },
   statItem: {
     alignItems: 'center',
+    minWidth: 80,
+    marginVertical: 5,
   },
   statNumber: {
     fontSize: 24,
@@ -228,6 +209,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     marginTop: 2,
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,

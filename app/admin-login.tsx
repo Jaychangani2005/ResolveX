@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Dimensions, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { FormInput } from '@/components/FormInput';
 import { ActionButton } from '@/components/ActionButton';
+import { FormInput } from '@/components/FormInput';
+import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import React, { useState } from 'react';
+import { Alert, Dimensions, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -163,6 +163,15 @@ export default function AdminLoginScreen() {
               >
                 <Text style={styles.userLoginText}>
                   🌿 NGO Login
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                onPress={() => router.push('/government-login')} 
+                style={[styles.userLoginButton, { marginTop: 8 }]}
+              >
+                <Text style={styles.userLoginText}>
+                  🏛️ Government Login
                 </Text>
               </TouchableOpacity>
             </View>

@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'admin' | 'super_user' | 'ngo';
+export type UserRole = 'user' | 'admin' | 'super_user' | 'ngo' | 'government';
 
 export interface User {
   id: string;
@@ -95,5 +95,19 @@ export interface NGOUser extends User {
     'view_user_names',
     'view_ai_validation_status',
     'view_incident_reports'
+  ];
+}
+
+export interface GovernmentUser extends User {
+  role: 'government';
+  permissions: [
+    'view_incident_pictures',
+    'view_incident_descriptions',
+    'view_user_names',
+    'view_ai_validation_status',
+    'view_incident_reports',
+    'view_analytics',
+    'export_data',
+    'view_admin_notes'
   ];
 } 

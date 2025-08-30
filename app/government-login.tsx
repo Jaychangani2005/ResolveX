@@ -1,34 +1,34 @@
-import { ActionButton } from '@/components/ActionButton';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Colors } from '@/constants/Colors';
-import { useAuth } from '@/contexts/AuthContext';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { ActionButton } from '@/components/ActionButton';
+import { useAuth } from '@/contexts/AuthContext';
 
-export default function NGOLoginScreen() {
+export default function GovernmentLoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { ngoLogin } = useAuth();
+  const { governmentLogin } = useAuth();
 
-  const handleNGOLogin = async () => {
+  const handleGovernmentLogin = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -36,16 +36,16 @@ export default function NGOLoginScreen() {
 
     setIsLoading(true);
     try {
-      await ngoLogin(email.trim(), password);
+      await governmentLogin(email.trim(), password);
       // Navigation is handled in the AuthContext
     } catch (error: any) {
-      console.error('NGO Login error:', error);
+      console.error('Government Login error:', error);
       
       // Provide specific error messages for common Firebase Auth errors
       let errorMessage = 'Login failed. Please try again.';
       
       if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No NGO account found with this email address.';
+        errorMessage = 'No government account found with this email address.';
       } else if (error.code === 'auth/wrong-password') {
         errorMessage = 'Incorrect password. Please try again.';
       } else if (error.code === 'auth/invalid-email') {
@@ -54,8 +54,8 @@ export default function NGOLoginScreen() {
         errorMessage = 'Too many failed attempts. Please try again later.';
       } else if (error.code === 'auth/network-request-failed') {
         errorMessage = 'Network error. Please check your connection.';
-      } else if (error.message && error.message.includes('NGO privileges')) {
-        errorMessage = 'Access denied. This account does not have NGO privileges.';
+      } else if (error.message && error.message.includes('Government privileges')) {
+        errorMessage = 'Access denied. This account does not have government privileges.';
       }
       
       Alert.alert('Login Failed', errorMessage);
@@ -82,10 +82,10 @@ export default function NGOLoginScreen() {
           {/* Header */}
           <ThemedView style={styles.header}>
             <ThemedText style={[styles.title, { color: colors.text }]}>
-              🌿 NGO Login
+              🏛️ Government Login
             </ThemedText>
             <ThemedText style={[styles.subtitle, { color: colors.icon }]}>
-              Access your NGO dashboard to view incident reports
+              Access your government dashboard for incident monitoring and analytics
             </ThemedText>
           </ThemedView>
 
@@ -104,7 +104,7 @@ export default function NGOLoginScreen() {
                     borderColor: colors.border
                   }
                 ]}
-                placeholder="Enter your NGO email"
+                placeholder="Enter your government email"
                 placeholderTextColor={colors.icon}
                 value={email}
                 onChangeText={setEmail}
@@ -141,8 +141,8 @@ export default function NGOLoginScreen() {
 
             {/* Login Button */}
             <ActionButton
-              title="Login to NGO Dashboard"
-              onPress={handleNGOLogin}
+              title="Login to Government Dashboard"
+              onPress={handleGovernmentLogin}
               loading={isLoading}
               style={styles.loginButton}
             />
@@ -158,14 +158,14 @@ export default function NGOLoginScreen() {
               </ThemedText>
             </TouchableOpacity>
 
-            {/* Government Login Link */}
+            {/* NGO Login Link */}
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => router.push('/government-login')}
+              onPress={() => router.push('/ngo-login')}
               disabled={isLoading}
             >
               <ThemedText style={[styles.backButtonText, { color: colors.primary }]}>
-                🏛️ Government Login
+                🌿 NGO Login
               </ThemedText>
             </TouchableOpacity>
           </ThemedView>
@@ -173,7 +173,7 @@ export default function NGOLoginScreen() {
           {/* Info Section */}
           <ThemedView style={styles.infoContainer}>
             <ThemedText style={[styles.infoTitle, { color: colors.text }]}>
-              NGO Access Features
+              Government Access Features
             </ThemedText>
             <View style={styles.featureList}>
               <View style={styles.featureItem}>
@@ -189,15 +189,27 @@ export default function NGOLoginScreen() {
                 </ThemedText>
               </View>
               <View style={styles.featureItem}>
-                <Text style={[styles.featureIcon, { color: colors.primary }]}>📍</Text>
+                <Text style={[styles.featureIcon, { color: colors.primary }]}>📊</Text>
                 <ThemedText style={[styles.featureText, { color: colors.icon }]}>
-                  Location and photo details
+                  Analytics and insights
+                </ThemedText>
+              </View>
+              <View style={styles.featureItem}>
+                <Text style={[styles.featureIcon, { color: colors.primary }]}>📤</Text>
+                <ThemedText style={[styles.featureText, { color: colors.icon }]}>
+                  Data export capabilities
                 </ThemedText>
               </View>
               <View style={styles.featureItem}>
                 <Text style={[styles.featureIcon, { color: colors.primary }]}>👤</Text>
                 <ThemedText style={[styles.featureText, { color: colors.icon }]}>
                   User information access
+                </ThemedText>
+              </View>
+              <View style={styles.featureItem}>
+                <Text style={[styles.featureIcon, { color: colors.primary }]}>📝</Text>
+                <ThemedText style={[styles.featureText, { color: colors.icon }]}>
+                  Admin notes and reviews
                 </ThemedText>
               </View>
             </View>

@@ -399,7 +399,7 @@ export const createAdminUser = async (
   email: string,
   password: string,
   name: string,
-  role: 'admin' | 'super_user' | 'ngo'
+  role: 'admin' | 'super_user' | 'ngo' | 'government'
 ): Promise<User> => {
   try {
     console.log('👑 Creating admin user:', email);
@@ -439,6 +439,17 @@ export const createAdminUser = async (
             'view_user_names',
             'view_ai_validation_status',
             'view_incident_reports'
+          ]
+        : role === 'government'
+        ? [
+            'view_incident_pictures',
+            'view_incident_descriptions',
+            'view_user_names',
+            'view_ai_validation_status',
+            'view_incident_reports',
+            'view_analytics',
+            'export_data',
+            'view_admin_notes'
           ]
         : [
             'manage_users',
@@ -659,6 +670,65 @@ export const createNGOUser = async (email: string, password: string, name: strin
   }
 };
 
+// Function to create government user
+export const createGovernmentUser = async (email: string, password: string, name: string): Promise<User> => {
+  try {
+    console.log('🏛️ Creating government user:', email);
+    
+    // Create Firebase Auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
+    
+    console.log('🏛️ Firebase user created with UID:', firebaseUser.uid);
+    
+    const governmentUserData: Omit<User, 'id'> = {
+      email: email.toLowerCase(),
+      name: name.trim(),
+      role: 'government',
+      points: 0,
+      badge: 'Government Official',
+      badgeEmoji: '🏛️',
+      createdAt: new Date(),
+      lastActive: new Date(),
+      isActive: true,
+      permissions: [
+        'view_incident_pictures',
+        'view_incident_descriptions',
+        'view_user_names',
+        'view_ai_validation_status',
+        'view_incident_reports',
+        'view_analytics',
+        'export_data',
+        'view_admin_notes'
+      ],
+      location: {
+        city: '',
+        state: '',
+        country: ''
+      },
+      preferences: {
+        notifications: true,
+        emailUpdates: true,
+        language: 'en'
+      }
+    };
+    
+    // Create government user document with Firebase Auth UID as document ID
+    await setDoc(doc(db, 'users', firebaseUser.uid), governmentUserData);
+    
+    const newGovernmentUser: User = {
+      id: firebaseUser.uid,
+      ...governmentUserData
+    };
+    
+    console.log('✅ Government user created successfully:', email);
+    return newGovernmentUser;
+  } catch (error: any) {
+    console.error('❌ Failed to create government user:', error);
+    throw error;
+  }
+};
+
 // Function to update user role (admin only)
 export const updateUserRole = async (userId: string, newRole: UserRole): Promise<void> => {
   try {
@@ -675,4 +745,4 @@ export const updateUserRole = async (userId: string, newRole: UserRole): Promise
     console.error('❌ Failed to update user role:', error);
     throw error;
   }
-};
+}; 

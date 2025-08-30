@@ -197,6 +197,17 @@ export default function LoginScreen() {
                   NGO Login
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.alternativeButton}
+                onPress={() => router.push('/government-login')}
+                disabled={isLoading}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.alternativeButtonText}>
+                  Government Login
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </ThemedView>
