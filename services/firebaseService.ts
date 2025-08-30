@@ -337,7 +337,7 @@ export const getCommunityStats = async (): Promise<CommunityStats> => {
 };
 
 // Get admin stats
-export const getAdminStats = async (): Promise<AdminStats> => {
+export const getAdminStats = async (): Promise<any> => {
   try {
     console.log('📊 Fetching admin stats...');
     
@@ -347,41 +347,45 @@ export const getAdminStats = async (): Promise<AdminStats> => {
     ]);
     
     const totalUsers = usersSnapshot.size;
-    const totalIncidents = incidentsSnapshot.size;
+    const totalReports = incidentsSnapshot.size;
     
-    let adminUsers = 0;
-    let regularUsers = 0;
+    let totalAdmins = 0;
+    let activeUsers = 0;
     let totalPoints = 0;
+    let pendingReports = 0;
+    let approvedReports = 0;
+    let rejectedReports = 0;
     
     usersSnapshot.forEach((doc) => {
       const userData = doc.data();
       if (userData.role === 'admin' || userData.role === 'super_user') {
-        adminUsers++;
-      } else {
-        regularUsers++;
+        totalAdmins++;
+      }
+      if (userData.isActive) {
+        activeUsers++;
       }
       totalPoints += userData.points || 0;
     });
     
-    let pendingIncidents = 0;
-    let resolvedIncidents = 0;
-    
     incidentsSnapshot.forEach((doc) => {
       const incidentData = doc.data();
       if (incidentData.status === 'pending') {
-        pendingIncidents++;
-      } else if (incidentData.status === 'resolved') {
-        resolvedIncidents++;
+        pendingReports++;
+      } else if (incidentData.status === 'approved') {
+        approvedReports++;
+      } else if (incidentData.status === 'rejected') {
+        rejectedReports++;
       }
     });
     
-    const stats: AdminStats = {
+    const stats = {
       totalUsers,
-      adminUsers,
-      regularUsers,
-      totalIncidents,
-      pendingIncidents,
-      resolvedIncidents,
+      totalReports,
+      pendingReports,
+      approvedReports,
+      rejectedReports,
+      totalAdmins,
+      activeUsers,
       totalPoints,
       averagePointsPerUser: totalUsers > 0 ? Math.round(totalPoints / totalUsers) : 0
     };
@@ -537,6 +541,39 @@ export const getUserIncidents = async (userId: string, limitCount: number = 20):
   }
 };
 
+// Function to get all incidents for admin users
+export const getIncidents = async (limitCount: number = 100): Promise<IncidentReport[]> => {
+  try {
+    console.log('📊 Fetching all incidents for admin view...');
+    
+    const incidentsQuery = query(
+      collection(db, 'incidents'),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
+    );
+    
+    const querySnapshot = await getDocs(incidentsQuery);
+    const incidents: IncidentReport[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      incidents.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt.toDate(),
+        updatedAt: data.updatedAt.toDate(),
+        aiValidated: data.aiValidated || false, // Default to false if not set
+      } as IncidentReport);
+    });
+    
+    console.log(`✅ Found ${incidents.length} incidents for admin view`);
+    return incidents;
+  } catch (error: any) {
+    console.error('❌ Error fetching incidents for admin:', error);
+    throw new Error(error.message);
+  }
+};
+
 // Function to get all incidents for NGO users
 export const getAllIncidentsForNGO = async (): Promise<IncidentReport[]> => {
   try {
@@ -674,5 +711,66 @@ export const updateUserRole = async (userId: string, newRole: UserRole): Promise
   } catch (error: any) {
     console.error('❌ Failed to update user role:', error);
     throw error;
+  }
+};
+
+// Function to update incident status (admin only)
+export const updateIncidentStatus = async (incidentId: string, status: 'pending' | 'approved' | 'rejected', rejectionReason?: string): Promise<void> => {
+  try {
+    console.log(`🔄 Updating incident status for ${incidentId} to ${status}`);
+    
+    const updateData: any = {
+      status: status,
+      updatedAt: new Date(),
+      reviewedBy: auth.currentUser?.uid || 'admin',
+      reviewedAt: new Date()
+    };
+
+    // If rejecting, add the rejection reason to adminNotes
+    if (status === 'rejected' && rejectionReason) {
+      updateData.adminNotes = `Rejected: ${rejectionReason}`;
+    }
+
+    // Update the incident status in Firestore
+    await updateDoc(doc(db, 'incidents', incidentId), updateData);
+    
+    console.log(`✅ Incident status updated successfully to ${status}`);
+  } catch (error: any) {
+    console.error('❌ Failed to update incident status:', error);
+    throw error;
+  }
+};
+
+// Function to update user password
+export const updateUserPassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  try {
+    console.log('🔄 Updating user password...');
+    
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentUser.email) {
+      throw new Error('No authenticated user found');
+    }
+
+    // Re-authenticate user before password change
+    const credential = require('firebase/auth').EmailAuthProvider.credential(
+      currentUser.email,
+      currentPassword
+    );
+    
+    await require('firebase/auth').reauthenticateWithCredential(currentUser, credential);
+    
+    // Update password
+    await require('firebase/auth').updatePassword(currentUser, newPassword);
+    
+    console.log('✅ Password updated successfully');
+  } catch (error: any) {
+    console.error('❌ Failed to update password:', error);
+    if (error.code === 'auth/wrong-password') {
+      throw new Error('Current password is incorrect');
+    } else if (error.code === 'auth/weak-password') {
+      throw new Error('New password is too weak');
+    } else {
+      throw new Error('Failed to update password. Please try again.');
+    }
   }
 };

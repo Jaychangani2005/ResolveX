@@ -1,35 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { ThemedView } from './ThemedView';
-import { ThemedText } from './ThemedText';
-import { ActionButton } from './ActionButton';
-import { getUsers, searchUsers, updateUserProfile, User } from '@/services/firebaseService';
+import { useTheme } from '@/contexts/ThemeContext';
+import { getUsers, updateUserProfile, User } from '@/services/firebaseService';
+import React, { useEffect, useState } from 'react';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export const AdminUserManager: React.FC = () => {
-  const { user: currentUser } = useAuth();
+  const { user } = useAuth();
+  const { isDarkMode } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
-    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_user')) {
-      loadUsers();
-    }
-  }, [currentUser]);
+    loadUsers();
+  }, []);
 
   useEffect(() => {
-    if (searchTerm.trim()) {
-      const filtered = users.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredUsers(filtered);
-    } else {
-      setFilteredUsers(users);
-    }
+    const filtered = users.filter(user => 
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredUsers(filtered);
   }, [searchTerm, users]);
 
   const loadUsers = async () => {
@@ -37,406 +31,418 @@ export const AdminUserManager: React.FC = () => {
       setIsLoading(true);
       const allUsers = await getUsers(100);
       setUsers(allUsers);
-      setFilteredUsers(allUsers);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to load users');
+    } catch (error) {
+      console.error('Error loading users:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleUserAction = async (action: string, targetUser: User) => {
-    if (!currentUser) return;
+  const handleUserAction = async (action: string, userId: string) => {
+    try {
+      const userToUpdate = users.find(u => u.id === userId);
+      if (!userToUpdate) return;
 
-    let message = '';
-    let updates: Partial<User> = {};
-
-    switch (action) {
-      case 'activate':
-        message = `Are you sure you want to activate ${targetUser.name}?`;
-        updates = { isActive: true };
-        break;
-      case 'deactivate':
-        message = `Are you sure you want to deactivate ${targetUser.name}?`;
-        updates = { isActive: false };
-        break;
-      case 'promote':
-        if (currentUser.role !== 'super_user') {
-          Alert.alert('Error', 'Only super users can promote users to admin');
+      switch (action) {
+        case 'activate':
+          await updateUserProfile(userId, { isActive: true });
+          Alert.alert('Success', 'User activated successfully');
+          break;
+        case 'deactivate':
+          await updateUserProfile(userId, { isActive: false });
+          Alert.alert('Success', 'User deactivated successfully');
+          break;
+        case 'change_role':
+          setSelectedUser(userToUpdate);
+          setShowRoleModal(true);
           return;
-        }
-        message = `Are you sure you want to promote ${targetUser.name} to admin?`;
-        updates = { 
-          role: 'admin',
-          permissions: [
-            'manage_users',
-            'view_reports',
-            'approve_reports',
-            'manage_leaderboard',
-            'view_analytics'
-          ]
-        };
-        break;
-      case 'demote':
-        if (currentUser.role !== 'super_user') {
-          Alert.alert('Error', 'Only super users can demote admins');
-          return;
-        }
-        message = `Are you sure you want to demote ${targetUser.name} to regular user?`;
-        updates = { 
-          role: 'user',
-          permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard']
-        };
-        break;
-      default:
-        return;
+        default:
+          break;
+      }
+      
+      // Reload users after action
+      await loadUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      Alert.alert('Error', 'Failed to update user');
     }
+  };
 
-    Alert.alert(
-      'Confirm Action',
-      message,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await updateUserProfile(targetUser.id, updates);
-              Alert.alert('Success', `User ${action}d successfully`);
-              await loadUsers(); // Refresh user list
-            } catch (error: any) {
-              Alert.alert('Error', error.message || `Failed to ${action} user`);
-            }
-          }
-        }
-      ]
-    );
+  const handleRoleChange = async (newRole: string) => {
+    if (!selectedUser) return;
+
+    try {
+      let roleData: any = {};
+      
+      switch (newRole) {
+        case 'coastal_communities':
+          roleData = {
+            role: 'ngo',
+            badge: 'Coastal Communities',
+            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports']
+          };
+          break;
+        case 'conservation_ngos':
+          roleData = {
+            role: 'ngo',
+            badge: 'Conservation NGOs',
+            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports']
+          };
+          break;
+        case 'government_forestry':
+          roleData = {
+            role: 'ngo',
+            badge: 'Government Forestry Departments',
+            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports']
+          };
+          break;
+        case 'researchers':
+          roleData = {
+            role: 'ngo',
+            badge: 'Researchers',
+            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports']
+          };
+          break;
+        default:
+          roleData = { role: newRole };
+      }
+
+      await updateUserProfile(selectedUser.id, roleData);
+      Alert.alert('Success', 'User role updated successfully');
+      setShowRoleModal(false);
+      setSelectedUser(null);
+      await loadUsers();
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      Alert.alert('Error', 'Failed to update user role');
+    }
   };
 
   const getUserRoleColor = (role: string) => {
     switch (role) {
       case 'super_user':
-        return '#FFD700'; // Gold
+        return '#FFD700';
       case 'admin':
-        return '#FF6B6B'; // Red
+        return '#4169E1';
+      case 'ngo':
+        return '#32CD32';
       default:
-        return '#4ECDC4'; // Teal
+        return '#32CD32';
     }
   };
 
   const getUserStatusIcon = (isActive: boolean) => {
-    return isActive ? '🟢' : '🔴';
+    return isActive ? 'Active' : 'Inactive';
   };
 
-  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'super_user')) {
+  const getStatusColor = (isActive: boolean) => {
+    return isActive ? '#32CD32' : '#FF6B6B';
+  };
+
+  if (isLoading) {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText style={styles.errorText}>Access denied. Admin privileges required.</ThemedText>
-      </ThemedView>
+      <View style={styles.loadingContainer}>
+        <Text style={[styles.loadingText, { color: isDarkMode ? '#ccc' : '#666' }]}>Loading users...</Text>
+      </View>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <ThemedText style={styles.title}>User Management</ThemedText>
-          <ThemedText style={styles.subtitle}>Manage user accounts and permissions</ThemedText>
-        </View>
+    <View style={styles.container}>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={[styles.searchInput, { 
+            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)',
+            color: isDarkMode ? '#fff' : '#1a1a2e',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : '#e9ecef'
+          }]}
+          placeholder="Search users by name or email..."
+          placeholderTextColor={isDarkMode ? '#ccc' : '#666'}
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+        />
+      </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search users by name or email..."
-            placeholderTextColor="#999"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-          />
-          <TouchableOpacity style={styles.refreshButton} onPress={loadUsers}>
-            <Text style={styles.refreshButtonText}>🔄</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* User Statistics */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>{filteredUsers.length}</ThemedText>
-            <ThemedText style={styles.statLabel}>Total Users</ThemedText>
-          </View>
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>
-              {filteredUsers.filter(u => u.role === 'admin' || u.role === 'super_user').length}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Admins</ThemedText>
-          </View>
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statNumber}>
-              {filteredUsers.filter(u => u.isActive).length}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Active</ThemedText>
-          </View>
-        </View>
-
-        {/* Users List */}
-        <View style={styles.usersContainer}>
-          <ThemedText style={styles.sectionTitle}>Users</ThemedText>
-          
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ThemedText style={styles.loadingText}>Loading users...</ThemedText>
-            </View>
-          ) : filteredUsers.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <ThemedText style={styles.emptyText}>No users found</ThemedText>
-            </View>
-          ) : (
-            <View style={styles.usersList}>
-              {filteredUsers.map((user) => (
-                <View key={user.id} style={styles.userCard}>
-                  <View style={styles.userHeader}>
-                    <View style={styles.userInfo}>
-                      <Text style={styles.userName}>{user.name}</Text>
-                      <Text style={styles.userEmail}>{user.email}</Text>
-                      <View style={styles.userMeta}>
-                        <Text style={[styles.userRole, { color: getUserRoleColor(user.role) }]}>
-                          {user.role.toUpperCase()}
-                        </Text>
-                        <Text style={styles.userStatus}>
-                          {getUserStatusIcon(user.isActive)} {user.isActive ? 'Active' : 'Inactive'}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.userStats}>
-                      <Text style={styles.userPoints}>{user.points} pts</Text>
-                      <Text style={styles.userBadge}>{user.badgeEmoji} {user.badge}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.userActions}>
-                    {user.role === 'user' && (
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.promoteButton]}
-                        onPress={() => handleUserAction('promote', user)}
-                      >
-                        <Text style={styles.actionButtonText}>Promote to Admin</Text>
-                      </TouchableOpacity>
-                    )}
-                    
-                    {user.role === 'admin' && currentUser.role === 'super_user' && (
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.demoteButton]}
-                        onPress={() => handleUserAction('demote', user)}
-                      >
-                        <Text style={styles.actionButtonText}>Demote to User</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {user.isActive ? (
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.deactivateButton]}
-                        onPress={() => handleUserAction('deactivate', user)}
-                      >
-                        <Text style={styles.actionButtonText}>Deactivate</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.activateButton]}
-                        onPress={() => handleUserAction('activate', user)}
-                      >
-                        <Text style={styles.actionButtonText}>Activate</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
+      {/* Users List */}
+      <ScrollView style={styles.usersList} showsVerticalScrollIndicator={false}>
+        {filteredUsers.map((userItem) => (
+          <View key={userItem.id} style={[styles.userCard, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)' }]}>
+            <View style={styles.userInfo}>
+              <View style={styles.userHeader}>
+                <Text style={[styles.userName, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>{userItem.name}</Text>
+                <View style={[styles.roleBadge, { backgroundColor: getUserRoleColor(userItem.role) }]}>
+                  <Text style={styles.roleText}>{userItem.role.toUpperCase()}</Text>
                 </View>
-              ))}
+              </View>
+              <Text style={[styles.userEmail, { color: isDarkMode ? '#ccc' : '#666' }]}>{userItem.email}</Text>
+              <View style={styles.userMeta}>
+                <Text style={[styles.userMetaText, { color: isDarkMode ? '#ccc' : '#666' }]}>Points: {userItem.points}</Text>
+                <Text style={[styles.userStatus, { color: getStatusColor(userItem.isActive) }]}>
+                  {getUserStatusIcon(userItem.isActive)}
+                </Text>
+              </View>
             </View>
-          )}
-        </View>
+            
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.roleButton]}
+                onPress={() => handleUserAction('change_role', userItem.id)}
+              >
+                <Text style={styles.actionButtonText}>Change Role</Text>
+              </TouchableOpacity>
+              
+              {userItem.isActive ? (
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.deactivateButton]}
+                  onPress={() => handleUserAction('deactivate', userItem.id)}
+                >
+                  <Text style={styles.actionButtonText}>Deactivate</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.activateButton]}
+                  onPress={() => handleUserAction('activate', userItem.id)}
+                >
+                  <Text style={styles.actionButtonText}>Activate</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        ))}
       </ScrollView>
-    </ThemedView>
+
+      {/* Role Change Modal */}
+      <Modal
+        visible={showRoleModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRoleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: isDarkMode ? '#1a1a2e' : '#fff' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Change Role for {selectedUser?.name}</Text>
+              <TouchableOpacity onPress={() => setShowRoleModal(false)}>
+                <Text style={[styles.closeButton, { color: isDarkMode ? '#fff' : '#666' }]}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.roleOptions}>
+              <TouchableOpacity
+                style={[styles.roleOption, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f8f9fa' }]}
+                onPress={() => handleRoleChange('coastal_communities')}
+              >
+                <Text style={[styles.roleOptionText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Coastal Communities</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.roleOption, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f8f9fa' }]}
+                onPress={() => handleRoleChange('conservation_ngos')}
+              >
+                <Text style={[styles.roleOptionText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Conservation NGOs</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.roleOption, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f8f9fa' }]}
+                onPress={() => handleRoleChange('government_forestry')}
+              >
+                <Text style={[styles.roleOptionText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Government Forestry Departments</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.roleOption, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f8f9fa' }]}
+                onPress={() => handleRoleChange('researchers')}
+              >
+                <Text style={[styles.roleOptionText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Researchers</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
   },
-  header: {
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    opacity: 0.7,
-    textAlign: 'center',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    gap: 12,
-  },
-  searchInput: {
+  loadingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#fff',
-    fontSize: 16,
-  },
-  refreshButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    padding: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  refreshButtonText: {
-    fontSize: 18,
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 24,
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  searchContainer: {
+    marginBottom: 20,
+  },
+  searchInput: {
     borderRadius: 12,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  usersContainer: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   usersList: {
-    gap: 16,
+    flex: 1,
   },
   userCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  userInfo: {
+    marginBottom: 16,
   },
   userHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  userInfo: {
-    flex: 1,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   userName: {
     fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1a1a2e',
+    flex: 1,
+  },
+  roleBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginLeft: 12,
+  },
+  roleText: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 4,
+    textTransform: 'uppercase',
   },
   userEmail: {
     fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
+    color: '#666',
     marginBottom: 8,
   },
   userMeta: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  userRole: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  userStatus: {
-    fontSize: 12,
-    color: '#fff',
-    opacity: 0.8,
-  },
-  userStats: {
-    alignItems: 'flex-end',
-  },
-  userPoints: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4CAF50',
-    marginBottom: 4,
-  },
-  userBadge: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
-  },
-  userActions: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  actionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    minWidth: 100,
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  promoteButton: {
-    backgroundColor: '#4CAF50',
+  userMetaText: {
+    fontSize: 14,
+    color: '#666',
   },
-  demoteButton: {
-    backgroundColor: '#FF9800',
+  userStatus: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  roleButton: {
+    backgroundColor: '#4169E1',
   },
   activateButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#32CD32',
   },
   deactivateButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#FF6B6B',
   },
   actionButtonText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  loadingContainer: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
   },
-  loadingText: {
-    fontSize: 16,
+  modalContent: {
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 400,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+  },
+  closeButton: {
+    fontSize: 24,
+    color: '#fff',
     opacity: 0.7,
   },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: 40,
+  roleOptions: {
+    gap: 12,
   },
-  emptyText: {
-    fontSize: 16,
-    opacity: 0.7,
+  roleOption: {
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  errorText: {
+  roleOptionText: {
     fontSize: 16,
+    color: '#fff',
     textAlign: 'center',
-    color: '#ff6b6b',
+    fontWeight: '500',
   },
 }); 
