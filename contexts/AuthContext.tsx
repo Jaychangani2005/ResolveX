@@ -146,6 +146,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Save to storage in background (non-blocking)
       saveUserToStorage(userProfile).catch(console.error);
       
+      // Refresh user data to ensure we have the latest information
+      setTimeout(async () => {
+        try {
+          const refreshedUser = await getUserProfile(userProfile.id);
+          if (refreshedUser) {
+            setUser(refreshedUser);
+            await saveUserToStorage(refreshedUser);
+            console.log('🔄 User data refreshed after login');
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not refresh user data:', error);
+        }
+      }, 1000);
+      
       console.log('🎉 Login complete! User should now be redirected to main app');
       
       // Navigate based on user role

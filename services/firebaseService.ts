@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 import { IncidentReport, User, UserRole } from '../types/user';
 import { auth, db } from './firebaseConfig';
+import { uploadPhotoToStorage } from './photoUploadService';
 
 // Define missing types locally
 interface LocationInfo {
@@ -83,7 +84,7 @@ export const firebaseSignIn = async (email: string, password: string): Promise<U
       try {
         const recoveredUserData: Omit<User, 'id'> = {
           email: firebaseUser.email || email,
-          name: firebaseUser.displayName || 'User',
+          name: firebaseUser.displayName || email.split('@')[0] || 'User',
           role: 'user',
           points: 0,
           badge: 'Newcomer',
@@ -121,6 +122,26 @@ export const firebaseSignIn = async (email: string, password: string): Promise<U
     
     const userData = userDoc.data() as User;
     console.log('✅ User profile found:', userData);
+    
+    // Check and fix generic user names
+    if (userData.name === 'User' || userData.name === 'user') {
+      console.log('🔧 Detected generic user name, attempting to fix...');
+      try {
+        const emailPrefix = userData.email.split('@')[0];
+        const newName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+        
+        await updateDoc(doc(db, 'users', firebaseUser.uid), {
+          name: newName,
+          updatedAt: new Date()
+        });
+        
+        userData.name = newName;
+        console.log(`✅ User name updated to "${newName}"`);
+      } catch (fixError) {
+        console.warn('⚠️ Could not fix generic user name:', fixError);
+      }
+    }
+    
     console.log('✅ Firebase sign in successful for:', email);
     
     return userData;
@@ -261,7 +282,7 @@ export const submitIncidentReport = async (
   userId: string,
   userEmail: string,
   userName: string,
-  photoUrl: string,
+  photoUri: string,
   location: LocationInfo,
   description: string
 ): Promise<string> => {
@@ -275,11 +296,12 @@ export const submitIncidentReport = async (
       throw new Error('Invalid location coordinates. Latitude and longitude are required.');
     }
     
+    // First, create the incident document to get the ID
     const incidentData: Omit<IncidentReport, 'id' | 'createdAt' | 'updatedAt'> = {
       userId,
       userEmail,
       userName,
-      photoUrl,
+      photoUrl: '', // Will be updated after photo upload
       location,
       description,
       status: 'pending',
@@ -293,9 +315,24 @@ export const submitIncidentReport = async (
       updatedAt: serverTimestamp(),
     });
     
-    console.log('✅ Incident report submitted successfully to Firestore:', incidentRef.id);
+    const incidentId = incidentRef.id;
+    console.log('✅ Incident document created with ID:', incidentId);
     
-    return incidentRef.id;
+    // Now upload the photo to Firebase Storage
+    console.log('📸 Starting photo upload process...');
+    const photoUploadResult = await uploadPhotoToStorage(photoUri, userId, incidentId);
+    
+    // Update the incident document with the photo URL
+    await updateDoc(doc(db, 'incidents', incidentId), {
+      photoUrl: photoUploadResult.downloadURL,
+      updatedAt: serverTimestamp(),
+    });
+    
+    console.log('✅ Photo uploaded and incident report completed successfully');
+    console.log(`   Photo URL: ${photoUploadResult.downloadURL}`);
+    console.log(`   Photo size: ${photoUploadResult.size} bytes`);
+    
+    return incidentId;
   } catch (error: any) {
     console.error('❌ Incident report submission failed:', error);
     throw error;
@@ -673,6 +710,38 @@ export const updateUserRole = async (userId: string, newRole: UserRole): Promise
     console.log(`✅ User role updated successfully to ${newRole}`);
   } catch (error: any) {
     console.error('❌ Failed to update user role:', error);
+    throw error;
+  }
+};
+
+// Function to fix generic user names
+export const fixGenericUserName = async (userId: string): Promise<void> => {
+  try {
+    console.log(`🔧 Fixing generic user name for ${userId}`);
+    
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      throw new Error('User not found');
+    }
+    
+    const userData = userDoc.data() as User;
+    
+    // Check if user has a generic name
+    if (userData.name === 'User' || userData.name === 'user') {
+      const emailPrefix = userData.email.split('@')[0];
+      const newName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+      
+      await updateDoc(doc(db, 'users', userId), {
+        name: newName,
+        updatedAt: new Date()
+      });
+      
+      console.log(`✅ User name updated from "${userData.name}" to "${newName}"`);
+    } else {
+      console.log(`ℹ️ User name "${userData.name}" is already personalized`);
+    }
+  } catch (error: any) {
+    console.error('❌ Failed to fix generic user name:', error);
     throw error;
   }
 };

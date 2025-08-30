@@ -1,10 +1,19 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    // Allow authenticated users to upload photos for incident reports
+    match /incidents/{userId}/{incidentId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow admins and NGO users to read all incident photos
+    match /incidents/{allPaths=**} {
+      allow read: if request.auth != null;
+    }
+    
+    // Block all other access by default
     match /{allPaths=**} {
       allow read, write: if false;
     }
