@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { IncidentReportCard } from '@/components/IncidentReportCard';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { IncidentReportCard } from '@/components/IncidentReportCard';
-import { getAllIncidentsForNGO } from '@/services/firebaseService';
+import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
-import { IncidentReport } from '@/services/firebaseService';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { getAllIncidentsForNGO, IncidentReport } from '@/services/firebaseService';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NGODashboardScreen() {
   const [incidents, setIncidents] = useState<IncidentReport[]>([]);
@@ -39,7 +38,7 @@ export default function NGODashboardScreen() {
     await loadIncidents();
     setRefreshing(false);
   };
-
+  
   const handleLogout = () => {
     Alert.alert(
       'Logout',
@@ -215,6 +214,17 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     opacity: 0.8,
+  },
+  logoutButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginLeft: 16,
+  },
+  logoutButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',

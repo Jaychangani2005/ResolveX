@@ -1,51 +1,243 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { getIncidents, updateIncidentStatus } from '@/services/firebaseService';
+import { IncidentReport } from '@/types/user';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
 export default function ReportsScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
   const { user, logout } = useAuth();
-  const [reports, setReports] = useState([]);
+  const { isDarkMode } = useTheme();
+  const [reports, setReports] = useState<IncidentReport[]>([]);
+  const [filteredReports, setFilteredReports] = useState<IncidentReport[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<IncidentReport | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [reportToReject, setReportToReject] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      // Simulate loading reports
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 1000);
-    }
-  }, [user]);
+    loadReports();
+  }, []);
 
+<<<<<<< HEAD
   // Only admin can access this screen
   if (!user || user.role !== 'admin') {
+=======
+  useEffect(() => {
+    const filtered = reports.filter(report => 
+      report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      report.userName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredReports(filtered);
+  }, [searchTerm, reports]);
+
+  const loadReports = async () => {
+    try {
+      setIsLoading(true);
+      const allReports = await getIncidents(100);
+      setReports(allReports);
+    } catch (error) {
+      console.error('Error loading reports:', error);
+      Alert.alert('Error', 'Failed to load reports');
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  const handleApprove = async (reportId: string) => {
+    try {
+      await updateIncidentStatus(reportId, 'approved');
+      Alert.alert('Success', 'Report approved successfully');
+      await loadReports();
+    } catch (error) {
+      console.error('Error approving report:', error);
+      Alert.alert('Error', 'Failed to approve report');
+    }
+  };
+
+  const handleReject = async (reportId: string) => {
+    if (!rejectionReason.trim()) {
+      Alert.alert('Error', 'Please provide a reason for rejection');
+      return;
+    }
+
+    try {
+      // Update the incident status to rejected with rejection reason
+      await updateIncidentStatus(reportId, 'rejected', rejectionReason);
+      
+      Alert.alert('Success', 'Report rejected successfully');
+      setRejectionReason('');
+      setShowRejectionModal(false);
+      setReportToReject(null);
+      await loadReports();
+    } catch (error) {
+      console.error('Error rejecting report:', error);
+      Alert.alert('Error', 'Failed to reject report');
+    }
+  };
+
+  const handleView = (report: IncidentReport) => {
+    setSelectedReport(report);
+    setShowViewModal(true);
+  };
+
+  const openRejectionModal = (reportId: string) => {
+    setReportToReject(reportId);
+    setShowRejectionModal(true);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return '#32CD32';
+      case 'pending':
+        return '#FFA500';
+      case 'rejected':
+        return '#FF6B6B';
+      default:
+        return '#666';
+    }
+  };
+
+  const getRoleBadge = () => {
+    if (user?.role === 'super_user') {
+      return { text: 'Super User', color: '#FFD700' };
+    } else if (user?.role === 'admin') {
+      return { text: 'Admin', color: '#4169E1' };
+    }
+    return { text: 'User', color: '#32CD32' };
+  };
+
+  const roleBadge = getRoleBadge();
+
+  if (isLoading) {
+>>>>>>> 6e807afbab16fcaf40d5ab16717b91870ecc77e6
     return (
       <SafeAreaView style={styles.container}>
         <LinearGradient
-          colors={['#1a1a2e', '#16213e', '#0f3460']}
+          colors={isDarkMode ? ['#0f0f23', '#1a1a2e', '#16213e'] : ['#f8f9fa', '#e9ecef', '#dee2e6']}
           style={styles.gradientBackground}
         >
-          <View style={styles.accessDenied}>
-            <Text style={styles.accessDeniedText}>🚫 Access Denied</Text>
-            <Text style={styles.accessDeniedSubtext}>
-              Only Administrators can view reports.
-            </Text>
+          <View style={styles.loadingContainer}>
+            <Text style={[styles.loadingText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Loading reports...</Text>
           </View>
         </LinearGradient>
       </SafeAreaView>
     );
   }
 
-  const handleLogout = () => {
+  return (
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={isDarkMode ? ['#0f0f23', '#1a1a2e', '#16213e'] : ['#f8f9fa', '#e9ecef', '#dee2e6']}
+        style={styles.gradientBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.welcomeSection}>
+              <Text style={[styles.welcomeText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Review Reports</Text>
+              <Text style={[styles.adminName, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>{user?.name}</Text>
+              <View style={[styles.roleBadge, { backgroundColor: roleBadge.color }]}>
+                <Text style={styles.roleText}>{roleBadge.text}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={[styles.searchInput, { 
+                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)',
+                color: isDarkMode ? '#fff' : '#1a1a2e',
+                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : '#e9ecef'
+              }]}
+              placeholder="Search by report description or user name..."
+              placeholderTextColor={isDarkMode ? '#ccc' : '#666'}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+            />
+          </View>
+
+          {/* Reports List */}
+          <View style={styles.reportsContainer}>
+            {filteredReports.length > 0 ? (
+              filteredReports.map((report) => (
+                <View key={report.id} style={[styles.reportCard, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)' }]}>
+                  <View style={styles.reportHeader}>
+                    <View style={styles.reportInfo}>
+                      <Text style={[styles.reportTitle, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                        {report.description.length > 50 ? `${report.description.substring(0, 50)}...` : report.description}
+                      </Text>
+                      <Text style={[styles.reportUser, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                        By: {report.userName}
+                      </Text>
+                      <Text style={[styles.reportDate, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                        {new Date(report.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(report.status) }]}>
+                      <Text style={styles.statusText}>{report.status.toUpperCase()}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.reportActions}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.viewButton]}
+                      onPress={() => handleView(report)}
+                    >
+                      <Ionicons name="eye" size={16} color="#4169E1" />
+                      <Text style={styles.viewButtonText}>View</Text>
+                    </TouchableOpacity>
+
+                    {report.status === 'pending' && (
+                      <>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.approveButton]}
+                          onPress={() => handleApprove(report.id)}
+                        >
+                          <Ionicons name="checkmark" size={16} color="#fff" />
+                          <Text style={styles.approveButtonText}>Approve</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.rejectButton]}
+                          onPress={() => openRejectionModal(report.id)}
+                        >
+                          <Ionicons name="close" size={16} color="#fff" />
+                          <Text style={styles.rejectButtonText}>Reject</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View style={[styles.emptyState, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)' }]}>
+                <Ionicons name="document-text-outline" size={48} color={isDarkMode ? '#ccc' : '#666'} />
+                <Text style={[styles.emptyStateText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                  {searchTerm ? 'No reports found matching your search' : 'No reports available'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Logout Button */}
+          <View style={styles.logoutContainer}>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={() => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -61,211 +253,157 @@ export default function ReportsScreen() {
         }
       ]
     );
-  };
-
-  const mockReports = [
-    {
-      id: '1',
-      title: 'Mangrove Deforestation',
-      status: 'pending',
-      priority: 'high',
-      location: 'Mumbai Coast',
-      reporter: 'John Doe',
-      date: '2024-12-15'
-    },
-    {
-      id: '2',
-      title: 'Illegal Fishing Activity',
-      status: 'reviewed',
-      priority: 'medium',
-      location: 'Goa Beach',
-      reporter: 'Jane Smith',
-      date: '2024-12-14'
-    },
-    {
-      id: '3',
-      title: 'Pollution Incident',
-      status: 'resolved',
-      priority: 'low',
-      location: 'Kerala Backwaters',
-      reporter: 'Mike Johnson',
-      date: '2024-12-13'
-    }
-  ];
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return { text: 'Pending', emoji: '⏳', color: '#FFA500' };
-      case 'reviewed':
-        return { text: 'Reviewed', emoji: '👀', color: '#4169E1' };
-      case 'resolved':
-        return { text: 'Resolved', emoji: '✅', color: '#32CD32' };
-      default:
-        return { text: 'Unknown', emoji: '❓', color: '#666' };
-    }
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return { text: 'High', color: '#DC143C' };
-      case 'medium':
-        return { text: 'Medium', color: '#FFA500' };
-      case 'low':
-        return { text: 'Low', color: '#32CD32' };
-      default:
-        return { text: 'Unknown', color: '#666' };
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#1a1a2e', '#16213e', '#0f3460']}
-        style={styles.gradientBackground}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>📊 Incident Reports</Text>
-            <Text style={styles.subtitle}>
-              Review and manage community incident reports
-            </Text>
-          </View>
-
-          {/* Quick Stats */}
-          <View style={styles.statsCard}>
-            <View style={styles.statItem}>
-              <Ionicons name="document-text" size={24} color="#4169E1" />
-              <Text style={styles.statNumber}>{mockReports.length}</Text>
-              <Text style={styles.statLabel}>Total Reports</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="time" size={24} color="#FFA500" />
-              <Text style={styles.statNumber}>
-                {mockReports.filter(r => r.status === 'pending').length}
-              </Text>
-              <Text style={styles.statLabel}>Pending</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="checkmark-circle" size={24} color="#32CD32" />
-              <Text style={styles.statNumber}>
-                {mockReports.filter(r => r.status === 'resolved').length}
-              </Text>
-              <Text style={styles.statLabel}>Resolved</Text>
-            </View>
-          </View>
-
-          {/* Actions */}
-          <View style={styles.actionsCard}>
-            <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
-            
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="filter-outline" size={32} color="#4169E1" />
-              <Text style={styles.actionText}>Filter Reports</Text>
-              <Text style={styles.actionSubtext}>Filter by status, priority, or location</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="search-outline" size={32} color="#32CD32" />
-              <Text style={styles.actionText}>Search Reports</Text>
-              <Text style={styles.actionSubtext}>Find specific incident reports</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="download-outline" size={32} color="#FFA500" />
-              <Text style={styles.actionText}>Export Data</Text>
-              <Text style={styles.actionSubtext}>Download reports for analysis</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Reports List */}
-          <View style={styles.reportsCard}>
-            <Text style={styles.sectionTitle}>📋 Recent Reports</Text>
-            
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Loading reports...</Text>
-              </View>
-            ) : mockReports.length > 0 ? (
-              <View style={styles.reportsList}>
-                {mockReports.map((report) => {
-                  const statusBadge = getStatusBadge(report.status);
-                  const priorityBadge = getPriorityBadge(report.priority);
-                  
-                  return (
-                    <View key={report.id} style={styles.reportItem}>
-                      <View style={styles.reportHeader}>
-                        <Text style={styles.reportTitle}>{report.title}</Text>
-                        <View style={styles.reportBadges}>
-                          <View style={[styles.badge, { backgroundColor: statusBadge.color }]}>
-                            <Text style={styles.badgeText}>
-                              {statusBadge.emoji} {statusBadge.text}
-                            </Text>
-                          </View>
-                          <View style={[styles.badge, { backgroundColor: priorityBadge.color }]}>
-                            <Text style={styles.badgeText}>
-                              {priorityBadge.text}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                      
-                      <View style={styles.reportDetails}>
-                        <View style={styles.detailRow}>
-                          <Ionicons name="location-outline" size={16} color="#666" />
-                          <Text style={styles.detailText}>{report.location}</Text>
-                        </View>
-                        <View style={styles.detailRow}>
-                          <Ionicons name="person-outline" size={16} color="#666" />
-                          <Text style={styles.detailText}>{report.reporter}</Text>
-                        </View>
-                        <View style={styles.detailRow}>
-                          <Ionicons name="calendar-outline" size={16} color="#666" />
-                          <Text style={styles.detailText}>{report.date}</Text>
-                        </View>
-                      </View>
-                      
-                      <View style={styles.reportActions}>
-                        <TouchableOpacity style={styles.actionBtn}>
-                          <Ionicons name="eye-outline" size={16} color="#4169E1" />
-                          <Text style={styles.actionBtnText}>View</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionBtn}>
-                          <Ionicons name="checkmark-outline" size={16} color="#32CD32" />
-                          <Text style={styles.actionBtnText}>Approve</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.actionBtn}>
-                          <Ionicons name="close-outline" size={16} color="#DC143C" />
-                          <Text style={styles.actionBtnText}>Reject</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No reports found</Text>
-                <Text style={styles.emptySubtext}>Reports will appear here once submitted</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Logout Button */}
-          <View style={styles.logoutContainer}>
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleLogout}
+              }}
             >
-              <Text style={styles.logoutButtonText}>🚪 Logout</Text>
+              <Text style={styles.logoutButtonText}>Logout</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </LinearGradient>
+
+      {/* Report View Modal */}
+      <Modal
+        visible={showViewModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowViewModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: isDarkMode ? '#1a1a2e' : '#fff' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Report Details</Text>
+              <TouchableOpacity onPress={() => setShowViewModal(false)}>
+                <Ionicons name="close" size={24} color={isDarkMode ? '#fff' : '#666'} />
+              </TouchableOpacity>
+            </View>
+            
+            {selectedReport && (
+              <ScrollView style={styles.modalBody}>
+                <View style={styles.detailSection}>
+                  <Text style={[styles.detailLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>User Information</Text>
+                  <Text style={[styles.detailText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                    Name: {selectedReport.userName}
+                  </Text>
+                  <Text style={[styles.detailText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                    Email: {selectedReport.userEmail}
+                  </Text>
+                </View>
+
+                <View style={styles.detailSection}>
+                  <Text style={[styles.detailLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Report Description</Text>
+                  <TextInput
+                    style={[styles.descriptionTextbox, { 
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f8f9fa',
+                      color: isDarkMode ? '#fff' : '#1a1a2e',
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : '#e9ecef'
+                    }]}
+                    value={selectedReport.description}
+                    multiline
+                    numberOfLines={6}
+                    editable={false}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                <View style={styles.detailSection}>
+                  <Text style={[styles.detailLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Location</Text>
+                  <Text style={[styles.detailText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                    {selectedReport.location.city}, {selectedReport.location.state}
+                  </Text>
+                </View>
+
+                <View style={styles.detailSection}>
+                  <Text style={[styles.detailLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Status & Timestamps</Text>
+                  <Text style={[styles.detailText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                    Status: {selectedReport.status.toUpperCase()}
+                  </Text>
+                  <Text style={[styles.detailText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                    Created: {new Date(selectedReport.createdAt).toLocaleString()}
+                  </Text>
+                  {selectedReport.reviewedAt && (
+                    <Text style={[styles.detailText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                      Reviewed: {new Date(selectedReport.reviewedAt).toLocaleString()}
+                    </Text>
+                  )}
+                </View>
+
+                {selectedReport.adminNotes && (
+                  <View style={styles.detailSection}>
+                    <Text style={[styles.detailLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Admin Notes</Text>
+                    <TextInput
+                      style={[styles.descriptionTextbox, { 
+                        backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f8f9fa',
+                        color: isDarkMode ? '#fff' : '#1a1a2e',
+                        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : '#e9ecef'
+                      }]}
+                      value={selectedReport.adminNotes}
+                      multiline
+                      numberOfLines={4}
+                      editable={false}
+                      textAlignVertical="top"
+                    />
+                  </View>
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Rejection Reason Modal */}
+      <Modal
+        visible={showRejectionModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRejectionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: isDarkMode ? '#1a1a2e' : '#fff' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Reject Report</Text>
+              <TouchableOpacity onPress={() => setShowRejectionModal(false)}>
+                <Ionicons name="close" size={24} color={isDarkMode ? '#fff' : '#666'} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <Text style={[styles.detailLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                Please provide a reason for rejection:
+              </Text>
+              <TextInput
+                style={[styles.rejectionTextbox, { 
+                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f8f9fa',
+                  color: isDarkMode ? '#fff' : '#1a1a2e',
+                  borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : '#e9ecef'
+                }]}
+                placeholder="Enter rejection reason..."
+                placeholderTextColor={isDarkMode ? '#ccc' : '#666'}
+                value={rejectionReason}
+                onChangeText={setRejectionReason}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowRejectionModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.rejectButton]}
+                onPress={() => reportToReject && handleReject(reportToReject)}
+              >
+                <Text style={styles.modalRejectButtonText}>Reject Report</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -281,198 +419,171 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
   },
-  header: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  header: {
     marginBottom: 30,
   },
-  title: {
+  welcomeSection: {
+    alignItems: 'center',
+  },
+  welcomeText: {
+    fontSize: 18,
+    opacity: 0.8,
+  },
+  adminName: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.8,
-    textAlign: 'center',
-  },
-  statsCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1a1a2e',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-  },
-  actionsCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a2e',
-    marginBottom: 16,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
   },
-  actionText: {
-    fontSize: 16,
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 8,
+  },
+  roleText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#1a1a2e',
-    marginLeft: 12,
-    flex: 1,
+    color: '#fff',
   },
-  actionSubtext: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 12,
-  },
-  reportsCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: 20,
+  searchContainer: {
     marginBottom: 24,
   },
-  reportsList: {
+  searchInput: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  reportsContainer: {
+    flex: 1,
     gap: 16,
   },
-  reportItem: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+  reportCard: {
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   reportHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  reportInfo: {
+    flex: 1,
+    marginRight: 12,
   },
   reportTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a2e',
-    flex: 1,
-    marginRight: 12,
+    marginBottom: 4,
   },
-  reportBadges: {
-    flexDirection: 'row',
-    gap: 8,
+  reportUser: {
+    fontSize: 14,
+    marginBottom: 2,
   },
-  badge: {
+  reportDate: {
+    fontSize: 12,
+  },
+  statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
   },
-  badgeText: {
+  statusText: {
     fontSize: 10,
     fontWeight: '600',
     color: '#fff',
-  },
-  reportDetails: {
-    marginBottom: 16,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  detailText: {
-    fontSize: 14,
-    color: '#666',
+    textTransform: 'uppercase',
   },
   reportActions: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
-  actionBtn: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#fff',
+    paddingVertical: 8,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
     gap: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  actionBtnText: {
+  viewButton: {
+    backgroundColor: 'rgba(65, 105, 225, 0.1)',
+  },
+  approveButton: {
+    backgroundColor: '#32CD32',
+  },
+  rejectButton: {
+    backgroundColor: '#FF6B6B',
+  },
+  viewButtonText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
+    fontWeight: '600',
+    color: '#4169E1',
   },
-  loadingContainer: {
-    alignItems: 'center',
-    padding: 40,
+  approveButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
   },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    fontStyle: 'italic',
+  rejectButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
   },
-  emptyContainer: {
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-  },
-  accessDenied: {
+  emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+    borderRadius: 16,
+    marginTop: 40,
   },
-  accessDeniedText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 16,
-  },
-  accessDeniedSubtext: {
+  emptyStateText: {
     fontSize: 16,
-    color: '#fff',
-    opacity: 0.8,
     textAlign: 'center',
+    marginTop: 16,
+    opacity: 0.7,
   },
   logoutContainer: {
     alignItems: 'center',
+    marginTop: 40,
     marginBottom: 40,
   },
   logoutButton: {
@@ -494,6 +605,122 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: '600',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    borderRadius: 16,
+    width: '90%',
+    maxHeight: '80%',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalBody: {
+    flex: 1,
+  },
+  detailSection: {
+    marginBottom: 20,
+  },
+  detailLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  detailText: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  descriptionTextbox: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    borderWidth: 1,
+    minHeight: 120,
+    textAlignVertical: 'top',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  rejectionTextbox: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    borderWidth: 1,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cancelButton: {
+    backgroundColor: '#6c757d',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalRejectButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
 }); 
