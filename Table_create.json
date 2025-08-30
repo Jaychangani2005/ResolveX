@@ -1,0 +1,21 @@
+{
+  "reports": {
+    "report1": {
+      "description": "string",
+      "latitude": 0,
+      "longitude": 0,
+      "imageUrl": "string",
+      "user": "string",
+      "createdAt": "2025-01-01T00:00:00Z",
+      "isValid": false
+    }
+  },
+  "users": {
+    "user1": {
+      "name": "string",
+      "points": 0,
+      "badges": [],
+      "reportsCount": 0
+    }
+  }
+}
