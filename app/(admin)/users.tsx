@@ -1,16 +1,14 @@
-import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getUsers, updateUserProfile } from '@/services/firebaseService';
+import { getUsers, updateUserProfile, updateUserRole } from '@/services/firebaseService';
 import { User } from '@/types/user';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width, height } = Dimensions.get('window');
 
 export default function UsersScreen() {
   const { user, logout } = useAuth();
@@ -81,42 +79,44 @@ export default function UsersScreen() {
     if (!selectedUser) return;
 
     try {
-      let roleData: any = {};
+      // First update the role using the dedicated function
+      await updateUserRole(selectedUser.id, newRole as any);
+      
+      // Then update other profile data if needed
+      let profileUpdates: any = {};
       
       switch (newRole) {
         case 'coastal_communities':
-          roleData = {
-            role: 'coastal_communities',
+          profileUpdates = {
             badge: 'Coastal Communities',
             permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard', 'view_community_reports']
           };
           break;
         case 'conservation_ngos':
-          roleData = {
-            role: 'conservation_ngos',
+          profileUpdates = {
             badge: 'Conservation NGOs',
             permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports', 'view_analytics', 'submit_reports']
           };
           break;
         case 'government_forestry':
-          roleData = {
-            role: 'government_forestry',
+          profileUpdates = {
             badge: 'Government Forestry',
             permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports', 'view_analytics', 'approve_reports', 'manage_reports', 'submit_reports']
           };
           break;
         case 'researchers':
-          roleData = {
-            role: 'researchers',
+          profileUpdates = {
             badge: 'Researcher',
             permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports', 'view_analytics', 'export_data', 'submit_reports', 'view_research_data']
           };
           break;
-        default:
-          roleData = { role: newRole };
       }
 
-      await updateUserProfile(selectedUser.id, roleData);
+      // Update profile data if there are additional changes
+      if (Object.keys(profileUpdates).length > 0) {
+        await updateUserProfile(selectedUser.id, profileUpdates);
+      }
+
       Alert.alert('Success', 'User role updated successfully');
       setShowRoleModal(false);
       setSelectedUser(null);
@@ -149,14 +149,7 @@ export default function UsersScreen() {
     };
   };
 
-  const getRoleBadgeForCurrentUser = () => {
-    if (user?.role === 'admin') {
-      return { text: 'Admin', color: '#4169E1' };
-    }
-    return { text: 'User', color: '#32CD32' };
-  };
 
-  const roleBadge = getRoleBadgeForCurrentUser();
 
   if (isLoading) {
     return (

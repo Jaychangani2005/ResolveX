@@ -4,6 +4,9 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Stack , router } from 'expo-router';
+import { useEffect } from 'react';
+
 
 export default function NGOTabLayout() {
   const colorScheme = useColorScheme();
