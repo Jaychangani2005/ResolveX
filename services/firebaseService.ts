@@ -22,6 +22,7 @@ import { IncidentReport, User, UserRole } from '../types/user';
 import { auth, db } from './firebaseConfig';
 import { notificationService } from './notificationService';
 import { uploadPhotoToStorage } from './photoUploadService';
+import { SMSService } from './smsService';
 
 // Define missing types locally
 interface LocationInfo {
@@ -534,6 +535,15 @@ export const submitIncidentReport = async (
       // Don't fail the incident submission if points awarding fails
     }
     
+    // Send SMS notification to admin/authority (static number for now)
+    try {
+      await sendIncidentNotificationSMS(incidentId, userName, location, description);
+      console.log('📱 SMS notification sent successfully');
+    } catch (smsError) {
+      console.warn('⚠️ Failed to send SMS notification:', smsError);
+      // Don't fail the incident submission if SMS fails
+    }
+    
     return incidentId;
   } catch (error: any) {
     console.error('❌ Incident report submission failed:', error);
@@ -555,6 +565,102 @@ export const submitIncidentReport = async (
     
     throw error;
   }
+};
+
+// Configuration for SMS notifications
+const SMS_CONFIG = {
+  // Static phone number for admin/authority notifications
+  // Change this to the phone number that should receive incident notifications
+  ADMIN_PHONE_NUMBER: '+1234567890', // Replace with actual admin phone number
+  
+  // Enable/disable SMS notifications
+  ENABLE_SMS_NOTIFICATIONS: true,
+  
+  // Maximum description length in SMS (to avoid long messages)
+  MAX_DESCRIPTION_LENGTH: 100
+};
+
+// Send SMS notification for new incident reports
+const sendIncidentNotificationSMS = async (
+  incidentId: string,
+  userName: string,
+  location: LocationInfo,
+  description: string
+): Promise<void> => {
+  try {
+    // Check if SMS notifications are enabled
+    if (!SMS_CONFIG.ENABLE_SMS_NOTIFICATIONS) {
+      console.log('📱 SMS notifications are disabled, skipping...');
+      return;
+    }
+    
+    console.log('📱 Preparing SMS notification for incident:', incidentId);
+    
+    // Use configured admin phone number
+    const adminPhoneNumber = SMS_CONFIG.ADMIN_PHONE_NUMBER;
+    
+    // Create the SMS message
+    const message = `🚨 NEW INCIDENT REPORT\n\n` +
+      `Report ID: ${incidentId}\n` +
+      `Reporter: ${userName}\n` +
+      `Location: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}\n` +
+      `Address: ${location.fullAddress || location.address || 'Not available'}\n` +
+      `Description: ${description.substring(0, SMS_CONFIG.MAX_DESCRIPTION_LENGTH)}${description.length > SMS_CONFIG.MAX_DESCRIPTION_LENGTH ? '...' : ''}\n\n` +
+      `Please review and take necessary action.`;
+    
+    console.log('📱 SMS Message prepared:', message);
+    console.log('📱 Sending to:', adminPhoneNumber);
+    
+    // Send SMS using the SMSService
+    const smsResult = await SMSService.sendSMSToMultiple([adminPhoneNumber], message);
+    
+    if (smsResult.success) {
+      console.log('✅ SMS notification sent successfully');
+      console.log(`   Recipients: ${smsResult.phoneNumbers.join(', ')}`);
+    } else {
+      console.warn('⚠️ SMS notification failed:', smsResult.message);
+      if (smsResult.failedNumbers && smsResult.failedNumbers.length > 0) {
+        console.warn('   Failed numbers:', smsResult.failedNumbers.join(', '));
+      }
+    }
+    
+  } catch (error: any) {
+    console.error('❌ Error sending SMS notification:', error);
+    throw new Error(`Failed to send SMS notification: ${error.message}`);
+  }
+};
+
+// Update admin phone number for SMS notifications
+export const updateAdminPhoneNumber = (newPhoneNumber: string): void => {
+  if (!newPhoneNumber || newPhoneNumber.trim() === '') {
+    throw new Error('Phone number cannot be empty');
+  }
+  
+  // Basic phone number validation
+  const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+  const cleaned = newPhoneNumber.replace(/[\s\-\(\)]/g, '');
+  
+  if (!phoneRegex.test(cleaned)) {
+    throw new Error('Invalid phone number format');
+  }
+  
+  SMS_CONFIG.ADMIN_PHONE_NUMBER = newPhoneNumber;
+  console.log('📱 Admin phone number updated to:', newPhoneNumber);
+};
+
+// Enable/disable SMS notifications
+export const setSMSNotificationsEnabled = (enabled: boolean): void => {
+  SMS_CONFIG.ENABLE_SMS_NOTIFICATIONS = enabled;
+  console.log(`📱 SMS notifications ${enabled ? 'enabled' : 'disabled'}`);
+};
+
+// Get current SMS configuration
+export const getSMSConfig = () => {
+  return {
+    adminPhoneNumber: SMS_CONFIG.ADMIN_PHONE_NUMBER,
+    enabled: SMS_CONFIG.ENABLE_SMS_NOTIFICATIONS,
+    maxDescriptionLength: SMS_CONFIG.MAX_DESCRIPTION_LENGTH
+  };
 };
 
 // Get community stats
@@ -1196,38 +1302,7 @@ export const fixGenericUserName = async (userId: string): Promise<void> => {
   }
 };
 
-// Get all incidents for admin view
-export const getIncidents = async (limitCount: number = 100): Promise<IncidentReport[]> => {
-  try {
-    console.log('📋 Fetching all incidents for admin view...');
-    
-    const incidentsQuery = query(
-      collection(db, 'incidents'),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
-    );
-    
-    const querySnapshot = await getDocs(incidentsQuery);
-    const incidents: IncidentReport[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      incidents.push({
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-        aiValidated: data.aiValidated || false,
-      } as IncidentReport);
-    });
-    
-    console.log(`✅ Found ${incidents.length} incidents for admin view`);
-    return incidents;
-  } catch (error: any) {
-    console.error('❌ Error fetching incidents for admin:', error);
-    throw new Error(error.message);
-  }
-};
+
 
 // Update incident status
 export const updateIncidentStatus = async (incidentId: string, status: string, rejectionReason?: string): Promise<void> => {

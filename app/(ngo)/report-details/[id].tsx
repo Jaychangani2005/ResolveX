@@ -3,7 +3,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { getAllIncidentsForNGO } from '@/services/firebaseService';
-import { IncidentReport } from '@/types/user';
 import { formatCoordinates } from '@/services/locationService';
 import { IncidentReport } from '@/types/user';
 import { LinearGradient } from 'expo-linear-gradient';
