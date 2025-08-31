@@ -2,7 +2,7 @@ import { AdminUserManager } from '@/components/AdminUserManager';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getAdminStats, getIncidents, getUsers } from '@/services/firebaseService';
+import { getAdminStats, getUsers, getIncidents } from '@/services/firebaseService';
 import { IncidentReport, User } from '@/types/user';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -42,7 +42,15 @@ export default function AdminDashboardScreen() {
   const loadStats = async () => {
     try {
       const adminStats = await getAdminStats();
-      setStats(adminStats);
+      setStats({
+        totalUsers: adminStats.totalUsers,
+        totalReports: adminStats.totalIncidents,
+        pendingReports: adminStats.pendingIncidents,
+        approvedReports: adminStats.resolvedIncidents,
+        rejectedReports: 0, // Not tracked in AdminStats
+        totalAdmins: adminStats.adminUsers,
+        activeUsers: adminStats.regularUsers,
+      });
     } catch (error) {
       console.error('Error loading admin stats:', error);
     }
@@ -73,10 +81,8 @@ export default function AdminDashboardScreen() {
   };
 
   const getRoleBadge = () => {
-    if (user?.role === 'super_user') {
-      return { text: 'Super User', color: '#FFD700' };
-    } else if (user?.role === 'admin') {
-      return { text: 'Admin', color: '#4169E1' };
+    if (user?.role === 'admin') {
+      return { text: 'Admin', emoji: '🛡️', color: '#4169E1' };
     }
     return { text: 'User', color: '#32CD32' };
   };

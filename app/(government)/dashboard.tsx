@@ -126,10 +126,19 @@ export default function GovernmentDashboardScreen() {
               🏛️ Government Dashboard
             </Text>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color="#DC143C" />
-            <Text style={styles.logoutButtonText}>Logout</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={[styles.smsButton, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/sms')}
+            >
+              <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
+              <Text style={styles.smsButtonText}>SMS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={20} color="#DC143C" />
+              <Text style={styles.logoutButtonText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Quick Stats */}
@@ -271,6 +280,11 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   welcomeText: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -279,6 +293,19 @@ const styles = StyleSheet.create({
   roleText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  smsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  smsButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   logoutButton: {
     flexDirection: 'row',

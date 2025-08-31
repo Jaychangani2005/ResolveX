@@ -68,13 +68,13 @@ export default function NGODashboardScreen() {
 
   // Check if user has NGO permissions
   useEffect(() => {
-    if (user && user.role !== 'ngo') {
+    if (user && user.role !== 'conservation_ngos') {
       Alert.alert('Access Denied', 'You do not have permission to access this area.');
       router.replace('/(tabs)');
     }
   }, [user]);
 
-  if (!user || user.role !== 'ngo') {
+  if (!user || user.role !== 'conservation_ngos') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centerContainer}>
@@ -87,6 +87,69 @@ export default function NGODashboardScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <ThemedView style={styles.header}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerContent}>
+            <ThemedText style={[styles.title, { color: colors.text }]}>
+              🌿 NGO Dashboard
+            </ThemedText>
+            <ThemedText style={[styles.subtitle, { color: colors.icon }]}>
+              Incident Reports Overview
+            </ThemedText>
+          </View>
+          
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/sms')}
+            >
+              <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
+              <ThemedText style={styles.actionButtonText}>SMS</ThemedText>
+            </TouchableOpacity>
+            
+            {/* Logout Button */}
+            <TouchableOpacity 
+              style={[styles.logoutButton, { backgroundColor: 'rgba(220, 20, 60, 0.1)' }]}
+              onPress={handleLogout}
+            >
+              <Ionicons name="log-out-outline" size={20} color="#DC143C" />
+              <ThemedText style={styles.logoutButtonText}>Logout</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ThemedView>
+
+      {/* Statistics */}
+      <ThemedView style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <ThemedText style={[styles.statNumber, { color: colors.primary }]}>
+            {incidents.length}
+          </ThemedText>
+          <ThemedText style={[styles.statLabel, { color: colors.icon }]}>
+            Total Reports
+          </ThemedText>
+        </View>
+        <View style={styles.statItem}>
+          <ThemedText style={[styles.statNumber, { color: colors.primary }]}>
+            {incidents.filter(incident => incident.aiValidated).length}
+          </ThemedText>
+          <ThemedText style={[styles.statLabel, { color: colors.icon }]}>
+            AI Validated
+          </ThemedText>
+        </View>
+        <View style={styles.statItem}>
+          <ThemedText style={[styles.statNumber, { color: colors.primary }]}>
+            {incidents.filter(incident => incident.status === 'resolved').length}
+          </ThemedText>
+          <ThemedText style={[styles.statLabel, { color: colors.icon }]}>
+            Resolved
+          </ThemedText>
+        </View>
+      </ThemedView>
+
+      {/* Incidents List */}
       <ScrollView 
         style={styles.scrollView}
         refreshControl={
@@ -261,16 +324,26 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  header: {
+  actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    gap: 12,
   },
-  headerTitle: {
-    fontSize: 24,
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  title: {
+    fontSize: 28,
     fontWeight: 'bold',
   },
   roleBadge: {
@@ -278,10 +351,21 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
   },
-  roleText: {
-    color: '#fff',
-    fontSize: 12,
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DC143C',
+    backgroundColor: 'rgba(220, 20, 60, 0.1)',
+  },
+  logoutButtonText: {
+    color: '#DC143C',
+    fontSize: 14,
     fontWeight: '600',
+    marginLeft: 4,
   },
   section: {
     padding: 20,

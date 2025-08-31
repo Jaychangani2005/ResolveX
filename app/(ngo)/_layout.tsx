@@ -10,10 +10,12 @@ export default function NGOTabLayout() {
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
 
-  // Redirect if not NGO user
-  if (!user || user.role !== 'ngo') {
-    return null;
-  }
+  useEffect(() => {
+    // Redirect non-NGO users
+    if (user && user.role !== 'conservation_ngos') {
+      router.replace('/(tabs)');
+    }
+  }, [user]);
 
   return (
     <Tabs

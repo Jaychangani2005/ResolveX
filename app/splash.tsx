@@ -11,7 +11,7 @@ const { width, height } = Dimensions.get('window');
 export default function SplashScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user, isLoading } = useAuth();
+  const { isLoading } = useAuth();
 
   const fadeAnim = new Animated.Value(0);
   const scaleAnim = new Animated.Value(0.8);
@@ -44,26 +44,19 @@ export default function SplashScreen() {
     Animated.sequence(animations).start();
   }, []);
 
-  // Handle authentication routing
+  // Handle authentication routing - auto-login disabled
   useEffect(() => {
     if (!isLoading) {
       const timer = setTimeout(() => {
-        if (user) {
-          // User is authenticated, redirect based on role
-          if (user.role === 'admin' || user.role === 'super_user') {
-            router.replace('/(admin)/dashboard');
-          } else {
-            router.replace('/(tabs)');
-          }
-        } else {
-          // User is not authenticated, go to login
-          router.replace('/login');
-        }
+        // Auto-login is disabled - always redirect to login page
+        // Users must sign up and login manually
+        console.log('🔒 Auto-login disabled - redirecting to login page');
+        router.replace('/login');
       }, 2000); // Show splash for 2 seconds
 
       return () => clearTimeout(timer);
     }
-  }, [user, isLoading]);
+  }, [isLoading]);
 
   const spin = rotateAnim.interpolate({
     inputRange: [0, 1],

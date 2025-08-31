@@ -4,12 +4,14 @@ import { UserProfileManager } from '@/components/UserProfileManager';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { getUserIncidents, IncidentReport } from '@/services/firebaseService';
+
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getUserIncidents } from '@/services/firebaseService';
+import { IncidentReport } from '@/types/user';
 
 const { width, height } = Dimensions.get('window');
 

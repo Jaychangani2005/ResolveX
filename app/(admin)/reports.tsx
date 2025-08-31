@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getIncidents, updateIncidentStatus } from '@/services/firebaseService';
+import { updateIncidentStatus } from '@/services/firebaseService';
 import { IncidentReport } from '@/types/user';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -105,9 +105,7 @@ export default function ReportsScreen() {
   };
 
   const getRoleBadge = () => {
-    if (user?.role === 'super_user') {
-      return { text: 'Super User', color: '#FFD700' };
-    } else if (user?.role === 'admin') {
+    if (user?.role === 'admin') {
       return { text: 'Admin', color: '#4169E1' };
     }
     return { text: 'User', color: '#32CD32' };

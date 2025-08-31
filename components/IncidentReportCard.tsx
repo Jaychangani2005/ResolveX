@@ -1,7 +1,7 @@
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { IncidentReport } from '@/services/firebaseService';
+import { IncidentReport } from '@/types/user';
 import { formatCoordinates } from '@/services/locationService';
 import { router } from 'expo-router';
 import React from 'react';
@@ -19,7 +19,7 @@ export function IncidentReportCard({ incident, showUserInfo = false, showStatus 
   const { user } = useAuth();
 
   const handleCardPress = () => {
-    if (user?.role === 'ngo') {
+    if (user?.role === 'conservation_ngos') {
       router.push(`/(ngo)/report-details/${incident.id}`);
     }
   };
@@ -56,8 +56,8 @@ export function IncidentReportCard({ incident, showUserInfo = false, showStatus 
     }
   };
 
-  const CardContainer = user?.role === 'ngo' ? TouchableOpacity : View;
-  const cardProps = user?.role === 'ngo' ? { onPress: handleCardPress, activeOpacity: 0.7 } : {};
+  const CardContainer = user?.role === 'conservation_ngos' ? TouchableOpacity : View;
+  const cardProps = user?.role === 'conservation_ngos' ? { onPress: handleCardPress, activeOpacity: 0.7 } : {};
 
   return (
     <CardContainer style={styles.container} {...cardProps}>

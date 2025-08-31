@@ -86,30 +86,30 @@ export default function UsersScreen() {
       switch (newRole) {
         case 'coastal_communities':
           roleData = {
-            role: 'ngo',
+            role: 'coastal_communities',
             badge: 'Coastal Communities',
-            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports']
+            permissions: ['submit_reports', 'view_own_reports', 'view_leaderboard', 'view_community_reports']
           };
           break;
         case 'conservation_ngos':
           roleData = {
-            role: 'ngo',
+            role: 'conservation_ngos',
             badge: 'Conservation NGOs',
-            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports']
+            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports', 'view_analytics', 'submit_reports']
           };
           break;
         case 'government_forestry':
           roleData = {
-            role: 'ngo',
-            badge: 'Government Forestry Departments',
-            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports']
+            role: 'government_forestry',
+            badge: 'Government Forestry',
+            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports', 'view_analytics', 'approve_reports', 'manage_reports', 'submit_reports']
           };
           break;
         case 'researchers':
           roleData = {
-            role: 'ngo',
-            badge: 'Researchers',
-            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports']
+            role: 'researchers',
+            badge: 'Researcher',
+            permissions: ['view_incident_pictures', 'view_incident_descriptions', 'view_user_names', 'view_ai_validation_status', 'view_incident_reports', 'view_analytics', 'export_data', 'submit_reports', 'view_research_data']
           };
           break;
         default:
@@ -129,12 +129,14 @@ export default function UsersScreen() {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'super_user':
-        return { text: 'Super User', color: '#FFD700' };
       case 'admin':
         return { text: 'Admin', color: '#4169E1' };
-      case 'ngo':
+      case 'conservation_ngos':
         return { text: 'NGO', color: '#32CD32' };
+      case 'government_forestry':
+        return { text: 'Government', color: '#FF6B6B' };
+      case 'researchers':
+        return { text: 'Researcher', color: '#FFD700' };
       default:
         return { text: 'User', color: '#32CD32' };
     }
@@ -148,9 +150,7 @@ export default function UsersScreen() {
   };
 
   const getRoleBadgeForCurrentUser = () => {
-    if (user?.role === 'super_user') {
-      return { text: 'Super User', color: '#FFD700' };
-    } else if (user?.role === 'admin') {
+    if (user?.role === 'admin') {
       return { text: 'Admin', color: '#4169E1' };
     }
     return { text: 'User', color: '#32CD32' };
@@ -184,12 +184,32 @@ export default function UsersScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.welcomeSection}>
-              <Text style={[styles.welcomeText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Manage Users</Text>
-              <Text style={[styles.adminName, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>{user?.name}</Text>
-              <View style={[styles.roleBadge, { backgroundColor: roleBadge.color }]}>
-                <Text style={styles.roleText}>{roleBadge.text}</Text>
-              </View>
+            <Text style={styles.title}>👥 User Management</Text>
+            <Text style={styles.subtitle}>
+              Manage user accounts and permissions
+            </Text>
+          </View>
+
+          {/* Quick Stats */}
+          <View style={styles.statsCard}>
+            <View style={styles.statItem}>
+              <Ionicons name="people" size={24} color="#4169E1" />
+              <Text style={styles.statNumber}>{users.length}</Text>
+              <Text style={styles.statLabel}>Total Users</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons name="shield-checkmark" size={24} color="#FFD700" />
+              <Text style={styles.statNumber}>
+                {users.filter(u => u.role === 'admin').length}
+              </Text>
+              <Text style={styles.statLabel}>Admins</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons name="checkmark-circle" size={24} color="#32CD32" />
+              <Text style={styles.statNumber}>
+                {users.filter(u => u.isActive).length}
+              </Text>
+              <Text style={styles.statLabel}>Active</Text>
             </View>
           </View>
 
@@ -391,6 +411,41 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 30,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.7,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  statsCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    opacity: 0.7,
+    textAlign: 'center',
   },
   welcomeSection: {
     alignItems: 'center',

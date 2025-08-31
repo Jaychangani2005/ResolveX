@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, Alert, TextInput, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -25,10 +25,27 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData, isUploading = false
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [locationInfo, setLocationInfo] = useState<any>(null);
-  const [mangroveResult, setMangroveResult] = useState<MangroveDetectionResult | null>(null);
+  const [mangroveResult, setMangroveResult] = useState<MangroveDetectionResult | undefined>(undefined);
   const [isCapturingLocation, setIsCapturingLocation] = useState<boolean>(false);
+  const [pendingPhotoData, setPendingPhotoData] = useState<string | null>(null);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  // Watch for coordinate changes and call onPhotoData when available
+  useEffect(() => {
+    if (pendingPhotoData && latitude && longitude && onPhotoData) {
+      console.log('✅ Coordinates now available, calling onPhotoData');
+      onPhotoData({
+        uri: pendingPhotoData,
+        description,
+        latitude,
+        longitude,
+        locationInfo,
+        mangroveResult
+      });
+      setPendingPhotoData(null); // Clear pending data
+    }
+  }, [latitude, longitude, pendingPhotoData, onPhotoData, description, locationInfo, mangroveResult]);
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -53,7 +70,6 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData, isUploading = false
       // Get current position
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
-        maximumAge: 10000,
       });
 
       const { latitude: lat, longitude: lng } = location.coords;
@@ -63,6 +79,7 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData, isUploading = false
       setLongitude(lng);
       
       // Get address from coordinates
+      let locationData: any = null;
       try {
         const reverseGeocodeResult = await Location.reverseGeocodeAsync({
           latitude: lat,
@@ -71,7 +88,7 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData, isUploading = false
 
         if (reverseGeocodeResult.length > 0) {
           const loc = reverseGeocodeResult[0];
-          const locationData = {
+          locationData = {
             street: loc.street || '',
             city: loc.city || loc.subregion || 'Unknown City',
             state: loc.region || '',
@@ -84,7 +101,7 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData, isUploading = false
       } catch (geocodeError) {
         console.warn('Geocoding failed, using coordinates only:', geocodeError);
       }
-
+      
       // Print coordinates to terminal/console
       console.log('📍 PHOTO LOCATION CAPTURED:');
       console.log(`   Latitude: ${lat}`);
@@ -131,75 +148,71 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData, isUploading = false
   };
 
   const takePhoto = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+    try {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) return;
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      setPhotoUri(uri);
-      onPhotoSelected(uri);
-      
-      // Auto-capture location when photo is taken
-      await captureLocation();
-      
-      // Notify parent component with complete photo data
-      if (onPhotoData && latitude && longitude) {
-        onPhotoData({
-          uri,
-          description,
-          latitude,
-          longitude,
-          locationInfo,
-          mangroveResult
-        });
-      }
+              if (!result.canceled && result.assets[0]) {
+          const uri = result.assets[0].uri;
+          console.log('📸 Photo captured:', uri);
+          setPhotoUri(uri);
+          onPhotoSelected(uri);
+          
+          // Set pending photo data - useEffect will handle onPhotoData when coordinates are ready
+          setPendingPhotoData(uri);
+          
+          // Auto-capture location when photo is taken
+          console.log('📍 Starting location capture...');
+          await captureLocation();
+        }
+    } catch (error) {
+      console.error('❌ Error in takePhoto:', error);
+      Alert.alert('Photo Error', 'Failed to take photo. Please try again.');
     }
   };
 
   const pickPhoto = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+    try {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      setPhotoUri(uri);
-      onPhotoSelected(uri);
-      
-      // Auto-capture location when photo is selected
-      await captureLocation();
-      
-      // Notify parent component with complete photo data
-      if (onPhotoData && latitude && longitude) {
-        onPhotoData({
-          uri,
-          description,
-          latitude,
-          longitude,
-          locationInfo,
-          mangroveResult
-        });
-      }
+              if (!result.canceled && result.assets[0]) {
+          const uri = result.assets[0].uri;
+          console.log('📸 Photo selected:', uri);
+          setPhotoUri(uri);
+          onPhotoSelected(uri);
+          
+          // Set pending photo data - useEffect will handle onPhotoData when coordinates are ready
+          setPendingPhotoData(uri);
+          
+          // Auto-capture location when photo is selected
+          console.log('📍 Starting location capture...');
+          await captureLocation();
+        }
+    } catch (error) {
+      console.error('❌ Error in pickPhoto:', error);
+      Alert.alert('Photo Error', 'Failed to select photo. Please try again.');
     }
   };
 
   const handleDescriptionChange = (text: string) => {
     setDescription(text);
     
-    // Update parent component with current data
+    // Only update parent component if we have all required data
     if (onPhotoData && photoUri && latitude && longitude) {
       onPhotoData({
         uri: photoUri,
@@ -218,7 +231,8 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData, isUploading = false
     setLatitude(null);
     setLongitude(null);
     setLocationInfo(null);
-    setMangroveResult(null);
+    setMangroveResult(undefined);
+    setPendingPhotoData(null);
     onPhotoSelected('');
   };
 
@@ -227,7 +241,10 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData, isUploading = false
       <Text style={[styles.label, { color: colors.text }]}>Photo & Description</Text>
       
       {photoUri ? (
-        <ScrollView style={styles.photoContainer}>
+        <ScrollView 
+          style={styles.photoContainer}
+          contentContainerStyle={styles.photoContentContainer}
+        >
           <Image source={{ uri: photoUri }} style={styles.photo} />
           
           {/* Location Capture Section */}
@@ -257,7 +274,7 @@ export function PhotoCapture({ onPhotoSelected, onPhotoData, isUploading = false
                     <Text style={[
                       styles.mangroveResultText, 
                       { 
-                        color: mangroveResult.isInMangroveArea ? colors.success || '#4CAF50' : colors.error || '#F44336' 
+                        color: mangroveResult.isInMangroveArea ? colors.primary : colors.error 
                       }
                     ]}>
                       {mangroveResult.isInMangroveArea 
@@ -377,6 +394,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   photoContainer: {
+    // Remove alignItems from here to fix ScrollView warning
+  },
+  photoContentContainer: {
     alignItems: 'center',
   },
   photo: {

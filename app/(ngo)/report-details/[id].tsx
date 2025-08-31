@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { getAllIncidentsForNGO } from '@/services/firebaseService';
+import { IncidentReport } from '@/types/user';
 import { formatCoordinates } from '@/services/locationService';
 import { IncidentReport } from '@/types/user';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,13 +62,13 @@ export default function ReportDetailsScreen() {
 
   // Check if user has NGO permissions
   useEffect(() => {
-    if (user && user.role !== 'ngo') {
+    if (user && user.role !== 'conservation_ngos') {
       Alert.alert('Access Denied', 'You do not have permission to access this area.');
       router.replace('/(tabs)');
     }
   }, [user]);
 
-  if (!user || user.role !== 'ngo') {
+  if (!user || user.role !== 'conservation_ngos') {
     return (
       <SafeAreaView style={styles.container}>
         <LinearGradient

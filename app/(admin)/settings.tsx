@@ -20,13 +20,30 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  // Only admin can access this screen
+  if (!user || user.role !== 'admin') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#1a1a2e', '#16213e', '#0f3460']}
+          style={styles.gradientBackground}
+        >
+          <View style={styles.accessDenied}>
+            <Text style={styles.accessDeniedText}>🚫 Access Denied</Text>
+            <Text style={styles.accessDeniedSubtext}>
+              Only Administrators can access settings.
+            </Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
+
   const getRoleBadge = () => {
-    if (user?.role === 'super_user') {
-      return { text: 'Super User', color: '#FFD700' };
-    } else if (user?.role === 'admin') {
-      return { text: 'Admin', color: '#4169E1' };
+    if (user?.role === 'admin') {
+      return { text: 'Admin', emoji: '🛡️', color: '#4169E1' };
     }
-    return { text: 'User', color: '#32CD32' };
+    return { text: 'User', emoji: '👤', color: '#32CD32' };
   };
 
   const roleBadge = getRoleBadge();

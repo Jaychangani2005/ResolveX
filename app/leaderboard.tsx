@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { LeaderboardItem } from '@/components/LeaderboardItem';
-import { getLeaderboard, getCommunityStats, LeaderboardEntry } from '@/services/firebaseService';
+import { getLeaderboard, getCommunityStats } from '@/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 

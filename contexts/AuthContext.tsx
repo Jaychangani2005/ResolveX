@@ -1,5 +1,4 @@
 import {
-    adminSignIn,
     firebaseSignIn,
     firebaseSignOut,
     firebaseSignUp,
@@ -16,10 +15,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<boolean>;
-  adminLogin: (email: string, password: string) => Promise<boolean>;
-  ngoLogin: (email: string, password: string) => Promise<boolean>;
-  governmentLogin: (email: string, password: string) => Promise<boolean>;
+  signup: (email: string, password: string, name: string, phoneNumber: string) => Promise<boolean>;
   updateProfile: (updates: Partial<Omit<User, 'id' | 'email' | 'role' | 'createdAt'>>) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -46,64 +42,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Optimized user loading with faster session validation
-  useEffect(() => {
-    const loadUserFromStorage = async () => {
-      try {
-        console.log('🔄 Loading user from local storage...');
-        
-        // Use Promise.all for parallel operations
-        const [sessionData, userData] = await Promise.all([
-          AsyncStorage.getItem(SESSION_STORAGE_KEY),
-          AsyncStorage.getItem(USER_STORAGE_KEY)
-        ]);
+  // 🔒 AUTO-LOGIN DISABLED: Users must sign up and login manually
+  // No automatic session restoration from local storage
 
-        if (sessionData && userData) {
-          const session = JSON.parse(sessionData);
-          const userProfile = JSON.parse(userData);
-          const now = new Date().getTime();
-          
-          // Faster session validation (reduced to 12 hours for better UX)
-          if (now - session.timestamp < 12 * 60 * 60 * 1000) {
-            console.log('✅ User session found, restoring user state');
-            setUser(userProfile);
-            
-            // Navigate based on user role (non-blocking)
-            setTimeout(() => {
-              console.log('🧭 Restoring user session, navigating to appropriate dashboard for role:', userProfile.role);
-              if (userProfile.role === 'admin' || userProfile.role === 'super_user') {
-                console.log('🛡️ Restoring admin session, redirecting to admin dashboard');
-                router.replace('/(admin)/dashboard');
-              } else if (userProfile.role === 'ngo') {
-                console.log('🏢 Restoring NGO session, redirecting to NGO dashboard');
-                router.replace('/(ngo)/dashboard');
-              } else if (userProfile.role === 'government') {
-                console.log('🏛️ Restoring Government session, redirecting to Government dashboard');
-                router.replace('/(government)/dashboard');
-              } else {
-                console.log('👤 Restoring regular user session, redirecting to main tabs');
-                router.replace('/(tabs)');
-              }
-            }, 100);
-          } else {
-            // Session expired, clear storage
-            console.log('⏰ User session expired, clearing storage');
-            await AsyncStorage.multiRemove([USER_STORAGE_KEY, SESSION_STORAGE_KEY]);
-          }
-        }
+  // Auto-login disabled - users must sign up and login manually
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        console.log('🔒 Auto-login disabled - users must sign up and login manually');
+        
+        // Set loading to false immediately since we're not loading any user
+        setIsLoading(false);
+        
+        // Ensure user is redirected to login page
+        console.log('🧭 No auto-login - users must login manually');
+        
       } catch (error) {
-        console.error('❌ Error loading user from storage:', error);
-        // Clear any corrupted data
-        await AsyncStorage.multiRemove([USER_STORAGE_KEY, SESSION_STORAGE_KEY]);
-      } finally {
+        console.error('❌ Error initializing auth:', error);
         setIsLoading(false);
       }
     };
 
-    loadUserFromStorage();
+    initializeAuth();
   }, []);
 
-  // Optimized user storage with batch operations
+  // User storage for normal login/signup sessions (not auto-login)
   const saveUserToStorage = useCallback(async (userData: User) => {
     try {
       const storageData: [string, string][] = [
@@ -169,14 +132,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Navigate based on user role
       setTimeout(() => {
         console.log('🧭 Navigating user to appropriate dashboard based on role:', userProfile.role);
-        if (userProfile.role === 'admin' || userProfile.role === 'super_user') {
+        if (userProfile.role === 'admin') {
           console.log('🛡️ Redirecting admin user to admin dashboard');
           router.replace('/(admin)/dashboard');
-        } else if (userProfile.role === 'ngo') {
-          console.log('🏢 Redirecting NGO user to NGO dashboard');
+        } else if (userProfile.role === 'conservation_ngos' || userProfile.role === 'government_forestry' || userProfile.role === 'researchers') {
+          console.log('🏢 Redirecting professional user to NGO dashboard');
           router.replace('/(ngo)/dashboard');
         } else {
-          console.log('👤 Redirecting regular user to main tabs');
+          console.log('👤 Redirecting coastal community user to main tabs');
           router.replace('/(tabs)');
         }
       }, 100);
@@ -191,12 +154,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [saveUserToStorage]);
 
   // Optimized signup
-  const signup = useCallback(async (email: string, password: string, name: string): Promise<boolean> => {
+  const signup = useCallback(async (email: string, password: string, name: string, phoneNumber: string): Promise<boolean> => {
     try {
       console.log('📝 Attempting signup for:', email);
+      console.log('📱 Phone number provided:', phoneNumber);
+      
+      // Validate phone number is provided
+      if (!phoneNumber || phoneNumber.trim().length === 0) {
+        throw new Error('Phone number is required for signup');
+      }
       
       setIsLoading(true);
-      const userProfile = await firebaseSignUp(email, password, name);
+      const userProfile = await firebaseSignUp(email, password, name, phoneNumber);
       console.log('✅ Signup successful, user profile:', userProfile);
       
       // Save user to local storage and set state
@@ -205,9 +174,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       console.log('🎉 Signup complete! User should now be redirected to main app');
       
-      // Navigate based on user role (new users are always 'user' role)
+      // Navigate based on user role (new users are always 'coastal_communities' role)
       setTimeout(() => {
-        console.log('🧭 Navigating new user to main tabs');
+        console.log('🧭 Navigating new coastal community user to main tabs');
         router.replace('/(tabs)');
       }, 100);
       
@@ -220,107 +189,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [saveUserToStorage]);
 
-  // Optimized admin login
-  const adminLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
-    try {
-      console.log('🔐 Attempting admin login for:', email);
-      
-      setIsLoading(true);
-      const userProfile = await adminSignIn(email, password);
-      console.log('✅ Admin login successful, user profile:', userProfile);
-      
-      // Save user to local storage and set state
-      await saveUserToStorage(userProfile);
-      setUser(userProfile);
-      
-      console.log('🎉 Admin login complete! User should now be redirected to admin dashboard');
-      
-      // Navigate admin user to admin dashboard
-      setTimeout(() => {
-        console.log('🛡️ Redirecting admin user to admin dashboard');
-        router.replace('/(admin)/dashboard');
-      }, 100);
-      
-      return true;
-    } catch (error: any) {
-      console.error('❌ Admin login error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [saveUserToStorage]);
 
-  // Optimized NGO login
-  const ngoLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
-    try {
-      console.log('🏢 Attempting NGO login for:', email);
-      
-      setIsLoading(true);
-      const userProfile = await firebaseSignIn(email, password);
-      
-      // Check if user has NGO role
-      if (userProfile.role !== 'ngo') {
-        throw new Error('Access denied. NGO privileges required.');
-      }
-      
-      console.log('✅ NGO login successful, user profile:', userProfile);
-      
-      // Save user to local storage and set state
-      await saveUserToStorage(userProfile);
-      setUser(userProfile);
-      
-      console.log('🎉 NGO login complete! User should now be redirected to NGO dashboard');
-      
-      // Navigate NGO user to NGO dashboard
-      setTimeout(() => {
-        console.log('🏢 Redirecting NGO user to NGO dashboard');
-        router.replace('/(ngo)/dashboard');
-      }, 100);
-      
-      return true;
-    } catch (error: any) {
-      console.error('❌ NGO login error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [saveUserToStorage]);
 
-  // Optimized Government login
-  const governmentLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
-    try {
-      console.log('🏛️ Attempting Government login for:', email);
-      
-      setIsLoading(true);
-      const userProfile = await firebaseSignIn(email, password);
-      
-      // Check if user has Government role
-      if (userProfile.role !== 'government') {
-        throw new Error('Access denied. Government privileges required.');
-      }
-      
-      console.log('✅ Government login successful, user profile:', userProfile);
-      
-      // Save user to local storage and set state
-      await saveUserToStorage(userProfile);
-      setUser(userProfile);
-      
-      console.log('🎉 Government login complete! User should now be redirected to Government dashboard');
-      
-      // Navigate Government user to Government dashboard
-      setTimeout(() => {
-        console.log('🏛️ Redirecting Government user to Government dashboard');
-        router.replace('/(government)/dashboard');
-      }, 100);
-      
-      return true;
-    } catch (error: any) {
-      console.error('❌ Government login error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [saveUserToStorage]);
+
 
   // Optimized logout
   const logout = useCallback(async (): Promise<void> => {
@@ -393,9 +264,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     logout,
     signup,
-    adminLogin,
-    ngoLogin,
-    governmentLogin,
     updateProfile,
     refreshUser,
   };
