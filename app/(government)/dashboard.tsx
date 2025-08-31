@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { getGovernmentRecentActivity, getGovernmentStats } from '@/services/firebaseService';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function GovernmentDashboardScreen() {
   const [stats, setStats] = useState({
@@ -14,7 +14,15 @@ export default function GovernmentDashboardScreen() {
     resolvedReports: 0,
     totalUsers: 0,
     mangroveAreas: 8,
+    recentReports: 0,
+    weeklyUsers: 0,
+    activeUsers: 0,
+    totalPoints: 0,
+    averagePointsPerUser: 0,
   });
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -22,23 +30,40 @@ export default function GovernmentDashboardScreen() {
 
   useEffect(() => {
     // Load dashboard statistics
-    loadDashboardStats();
+    loadDashboardData();
   }, []);
 
-  const loadDashboardStats = async () => {
+  const loadDashboardData = async () => {
     try {
-      // TODO: Implement actual data fetching from Firestore
-      // For now, using mock data
-      setStats({
-        totalReports: 156,
-        pendingReports: 23,
-        resolvedReports: 133,
-        totalUsers: 89,
-        mangroveAreas: 8,
-      });
+      setLoading(true);
+      console.log('🏛️ Loading government dashboard data...');
+      
+      // Fetch stats and recent activity in parallel
+      const [statsData, activityData] = await Promise.all([
+        getGovernmentStats(),
+        getGovernmentRecentActivity()
+      ]);
+      
+      setStats(statsData);
+      setRecentActivity(activityData);
+      
+      console.log('✅ Government dashboard data loaded successfully');
     } catch (error) {
-      console.error('Error loading dashboard stats:', error);
+      console.error('❌ Error loading dashboard data:', error);
+      Alert.alert(
+        'Error',
+        'Failed to load dashboard data. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadDashboardData();
+    setRefreshing(false);
   };
 
   const handleLogout = () => {
@@ -63,9 +88,34 @@ export default function GovernmentDashboardScreen() {
     router.push(route);
   };
 
+
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.text }]}>
+            Loading dashboard...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView style={styles.scrollView}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -88,27 +138,37 @@ export default function GovernmentDashboardScreen() {
             📊 Quick Statistics
           </Text>
           
-          <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Text style={[styles.statNumber, { color: colors.primary }]}>{stats.totalReports}</Text>
-              <Text style={[styles.statLabel, { color: colors.text }]}>Total Reports</Text>
-            </View>
-            
-            <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Text style={[styles.statNumber, { color: '#FF9800' }]}>{stats.pendingReports}</Text>
-              <Text style={[styles.statLabel, { color: colors.text }]}>Pending</Text>
-            </View>
-            
-            <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Text style={[styles.statNumber, { color: '#4CAF50' }]}>{stats.resolvedReports}</Text>
-              <Text style={[styles.statLabel, { color: colors.text }]}>Resolved</Text>
-            </View>
-            
-            <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-              <Text style={[styles.statNumber, { color: '#2196F3' }]}>{stats.totalUsers}</Text>
-              <Text style={[styles.statLabel, { color: colors.text }]}>Active Users</Text>
-            </View>
-          </View>
+                     <View style={styles.statsGrid}>
+             <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+               <Text style={[styles.statNumber, { color: colors.primary }]}>{stats.totalReports}</Text>
+               <Text style={[styles.statLabel, { color: colors.text }]}>Total Reports</Text>
+             </View>
+             
+             <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+               <Text style={[styles.statNumber, { color: '#2196F3' }]}>{stats.totalUsers}</Text>
+               <Text style={[styles.statLabel, { color: colors.text }]}>Total Users</Text>
+             </View>
+             
+             <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+               <Text style={[styles.statNumber, { color: '#9C27B0' }]}>{stats.activeUsers}</Text>
+               <Text style={[styles.statLabel, { color: colors.text }]}>Active Users</Text>
+             </View>
+             
+             <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+               <Text style={[styles.statNumber, { color: '#FF5722' }]}>{stats.recentReports}</Text>
+               <Text style={[styles.statLabel, { color: colors.text }]}>Last 24h</Text>
+             </View>
+             
+             <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+               <Text style={[styles.statNumber, { color: '#FFC107' }]}>{stats.totalPoints}</Text>
+               <Text style={[styles.statLabel, { color: colors.text }]}>Total Points</Text>
+             </View>
+             
+             <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+               <Text style={[styles.statNumber, { color: '#00BCD4' }]}>{stats.mangroveAreas}</Text>
+               <Text style={[styles.statLabel, { color: colors.text }]}>Mangrove Areas</Text>
+             </View>
+           </View>
         </View>
 
         {/* Quick Actions */}
@@ -127,32 +187,14 @@ export default function GovernmentDashboardScreen() {
               <Text style={styles.actionSubtext}>Review incident reports</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity 
-              style={[styles.actionCard, { backgroundColor: '#FF9800' }]}
-              onPress={() => navigateTo('/(government)/analytics')}
-            >
-              <Ionicons name="analytics-outline" size={32} color="#fff" />
-              <Text style={styles.actionText}>Analytics</Text>
-              <Text style={styles.actionSubtext}>View statistics</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.actionCard, { backgroundColor: '#4CAF50' }]}
-              onPress={() => navigateTo('/(government)/settings')}
-            >
-              <Ionicons name="settings-outline" size={32} color="#fff" />
-              <Text style={styles.actionText}>Settings</Text>
-              <Text style={styles.actionSubtext}>Configure system</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.actionCard, { backgroundColor: '#2196F3' }]}
-              onPress={() => Alert.alert('Coming Soon', 'Export functionality will be available soon!')}
-            >
-              <Ionicons name="download-outline" size={32} color="#fff" />
-              <Text style={styles.actionText}>Export Data</Text>
-              <Text style={styles.actionSubtext}>Download reports</Text>
-            </TouchableOpacity>
+                         <TouchableOpacity 
+               style={[styles.actionCard, { backgroundColor: '#4CAF50' }]}
+               onPress={() => navigateTo('/(government)/settings')}
+             >
+               <Ionicons name="settings-outline" size={32} color="#fff" />
+               <Text style={styles.actionText}>Settings</Text>
+               <Text style={styles.actionSubtext}>Configure system</Text>
+             </TouchableOpacity>
           </View>
         </View>
 
@@ -163,18 +205,22 @@ export default function GovernmentDashboardScreen() {
           </Text>
           
           <View style={[styles.activityCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.activityText, { color: colors.text }]}>
-              • 5 new incident reports submitted in the last 24 hours
-            </Text>
-            <Text style={[styles.activityText, { color: colors.text }]}>
-              • 3 reports resolved by admin team
-            </Text>
-            <Text style={[styles.activityText, { color: colors.text }]}>
-              • 12 new users registered this week
-            </Text>
-            <Text style={[styles.activityText, { color: colors.text }]}>
-              • System maintenance completed successfully
-            </Text>
+            {recentActivity.length > 0 ? (
+              recentActivity.slice(0, 5).map((activity, index) => (
+                <View key={index} style={styles.activityItem}>
+                  <Text style={[styles.activityText, { color: colors.text }]}>
+                    • {activity.action}
+                  </Text>
+                  <Text style={[styles.activityDetails, { color: colors.textSecondary || colors.text }]}>
+                    {activity.details} • {activity.timestamp.toLocaleDateString()}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <Text style={[styles.activityText, { color: colors.textSecondary || colors.text }]}>
+                No recent activity
+              </Text>
+            )}
           </View>
         </View>
 
@@ -193,9 +239,9 @@ export default function GovernmentDashboardScreen() {
             </Text>
           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+             </ScrollView>
+     </View>
+   );
 }
 
 const styles = StyleSheet.create({
@@ -205,6 +251,16 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
+    fontWeight: '500',
   },
   header: {
     flexDirection: 'row',
@@ -265,6 +321,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    marginBottom: 12,
   },
   statNumber: {
     fontSize: 28,
@@ -324,8 +381,17 @@ const styles = StyleSheet.create({
   },
   activityText: {
     fontSize: 14,
-    marginBottom: 8,
+    marginBottom: 4,
     lineHeight: 20,
+  },
+  activityDetails: {
+    fontSize: 12,
+    marginBottom: 8,
+    lineHeight: 16,
+    opacity: 0.7,
+  },
+  activityItem: {
+    marginBottom: 8,
   },
   statusContainer: {
     marginBottom: 30,

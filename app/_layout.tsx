@@ -1,7 +1,7 @@
-import { Stack } from 'expo-router';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { AuthProvider } from '@/contexts/AuthContext';
-import SplashScreen from './splash';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { Stack } from 'expo-router';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
@@ -18,16 +18,16 @@ function RootLayoutNav() {
       <Stack.Screen name="(ngo)" options={{ headerShown: false }} />
       <Stack.Screen name="(government)" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
-      <Stack.Screen name="report-incident" options={{ headerShown: false }} />
-      <Stack.Screen name="leaderboard" options={{ headerShown: false }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

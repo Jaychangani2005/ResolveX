@@ -1,18 +1,19 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Colors } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { IncidentReport } from '@/services/firebaseService';
 import { formatCoordinates } from '@/services/locationService';
 import { router } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
+import React from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface IncidentReportCardProps {
   incident: IncidentReport;
   showUserInfo?: boolean;
+  showStatus?: boolean;
 }
 
-export function IncidentReportCard({ incident, showUserInfo = false }: IncidentReportCardProps) {
+export function IncidentReportCard({ incident, showUserInfo = false, showStatus = true }: IncidentReportCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
@@ -62,11 +63,13 @@ export function IncidentReportCard({ incident, showUserInfo = false }: IncidentR
     <CardContainer style={styles.container} {...cardProps}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.statusContainer}>
-          <Text style={[styles.statusText, { color: getStatusColor(incident.status) }]}>
-            {getStatusEmoji(incident.status)} {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
-          </Text>
-        </View>
+        {showStatus && (
+          <View style={styles.statusContainer}>
+            <Text style={[styles.statusText, { color: getStatusColor(incident.status) }]}>
+              {getStatusEmoji(incident.status)} {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
+            </Text>
+          </View>
+        )}
         <Text style={[styles.dateText, { color: colors.icon }]}>
           {formatDate(incident.createdAt)}
         </Text>

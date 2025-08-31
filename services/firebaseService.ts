@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 import { IncidentReport, User, UserRole } from '../types/user';
 import { auth, db } from './firebaseConfig';
+import { notificationService } from './notificationService';
 import { uploadPhotoToStorage } from './photoUploadService';
 
 // Define missing types locally
@@ -328,11 +329,24 @@ export const submitIncidentReport = async (
       updatedAt: serverTimestamp(),
     });
     
-    console.log('✅ Photo uploaded and incident report completed successfully');
-    console.log(`   Photo URL: ${photoUploadResult.downloadURL}`);
-    console.log(`   Photo size: ${photoUploadResult.size} bytes`);
-    
-    return incidentId;
+         console.log('✅ Photo uploaded and incident report completed successfully');
+     console.log(`   Photo URL: ${photoUploadResult.downloadURL}`);
+     console.log(`   Photo size: ${photoUploadResult.size} bytes`);
+     
+     // Send notification to government users about new incident
+     try {
+       await notificationService.notifyNewIncident({
+         id: incidentId,
+         userName: userName,
+         location: location.city || location.fullAddress || 'Unknown location',
+         description: description
+       });
+       console.log('🔔 Notification sent to government users about new incident');
+     } catch (notificationError) {
+       console.error('❌ Failed to send notification:', notificationError);
+     }
+     
+     return incidentId;
   } catch (error: any) {
     console.error('❌ Incident report submission failed:', error);
     throw error;
@@ -608,8 +622,8 @@ export const getIncidents = async (limitCount: number = 100): Promise<IncidentRe
       incidents.push({
         id: doc.id,
         ...data,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
+        createdAt: data.createdAt ? data.createdAt.toDate() : new Date(),
+        updatedAt: data.updatedAt ? data.updatedAt.toDate() : new Date(),
         aiValidated: data.aiValidated || false, // Default to false if not set
       } as IncidentReport);
     });
@@ -640,8 +654,8 @@ export const getAllIncidentsForNGO = async (): Promise<IncidentReport[]> => {
       incidents.push({
         id: doc.id,
         ...data,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
+        createdAt: data.createdAt ? data.createdAt.toDate() : new Date(),
+        updatedAt: data.updatedAt ? data.updatedAt.toDate() : new Date(),
         aiValidated: data.aiValidated || false, // Default to false if not set
       } as IncidentReport);
     });
@@ -675,7 +689,7 @@ export const getLeaderboard = async (leaderboardLimit: number = 50): Promise<Lea
         points: data.points,
         badge: data.badge,
         badgeEmoji: data.badgeEmoji,
-        lastActive: data.lastActive.toDate(),
+        lastActive: data.lastActive ? data.lastActive.toDate() : new Date(),
       } as LeaderboardEntry);
     });
     
@@ -799,6 +813,126 @@ export const createGovernmentUser = async (email: string, password: string, name
     return newGovernmentUser;
   } catch (error: any) {
     console.error('❌ Failed to create government user:', error);
+    throw error;
+  }
+};
+
+// Function to get government dashboard stats
+export const getGovernmentStats = async (): Promise<any> => {
+  try {
+    console.log('🏛️ Fetching government dashboard stats...');
+    
+    const [usersSnapshot, incidentsSnapshot] = await Promise.all([
+      getDocs(collection(db, 'users')),
+      getDocs(collection(db, 'incidents'))
+    ]);
+    
+    const totalUsers = usersSnapshot.size;
+    const totalReports = incidentsSnapshot.size;
+    
+    let activeUsers = 0;
+    let totalPoints = 0;
+    let recentReports = 0; // Reports from last 24 hours
+    let weeklyUsers = 0; // New users this week
+    
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    usersSnapshot.forEach((doc) => {
+      const userData = doc.data();
+      if (userData.isActive) {
+        activeUsers++;
+      }
+      totalPoints += userData.points || 0;
+      
+      // Check for new users this week
+      if (userData.createdAt && userData.createdAt.toDate && userData.createdAt.toDate() > oneWeekAgo) {
+        weeklyUsers++;
+      }
+    });
+    
+    incidentsSnapshot.forEach((doc) => {
+      const incidentData = doc.data();
+      
+      // Check for recent reports (last 24 hours)
+      if (incidentData.createdAt && incidentData.createdAt.toDate && incidentData.createdAt.toDate() > oneDayAgo) {
+        recentReports++;
+      }
+    });
+    
+    const stats = {
+      totalUsers,
+      totalReports,
+      activeUsers,
+      totalPoints,
+      recentReports,
+      weeklyUsers,
+      mangroveAreas: 8, // Static for now, could be made dynamic
+      averagePointsPerUser: totalUsers > 0 ? Math.round(totalPoints / totalUsers) : 0
+    };
+    
+    console.log('✅ Government stats fetched successfully:', stats);
+    return stats;
+  } catch (error: any) {
+    console.error('❌ Error fetching government stats:', error);
+    throw error;
+  }
+};
+
+// Function to get recent activity for government dashboard
+export const getGovernmentRecentActivity = async (): Promise<any[]> => {
+  try {
+    console.log('🏛️ Fetching recent activity for government dashboard...');
+    
+    const [recentIncidents, recentUsers] = await Promise.all([
+      getDocs(query(
+        collection(db, 'incidents'),
+        orderBy('createdAt', 'desc'),
+        limit(5)
+      )),
+      getDocs(query(
+        collection(db, 'users'),
+        orderBy('createdAt', 'desc'),
+        limit(5)
+      ))
+    ]);
+    
+    const activities: any[] = [];
+    
+    // Add recent incident activities
+    recentIncidents.forEach((doc) => {
+      const incidentData = doc.data();
+      activities.push({
+        type: 'incident',
+        action: 'New incident report submitted',
+        details: `Report by ${incidentData.userName || 'Anonymous'}`,
+        timestamp: incidentData.createdAt?.toDate() || new Date(),
+        status: incidentData.status
+      });
+    });
+    
+    // Add recent user activities
+    recentUsers.forEach((doc) => {
+      const userData = doc.data();
+      activities.push({
+        type: 'user',
+        action: 'New user registered',
+        details: `${userData.name} (${userData.role})`,
+        timestamp: userData.createdAt?.toDate() || new Date(),
+        role: userData.role
+      });
+    });
+    
+    // Sort by timestamp and return top 10
+    const sortedActivities = activities
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, 10);
+    
+    console.log('✅ Recent activity fetched successfully');
+    return sortedActivities;
+  } catch (error: any) {
+    console.error('❌ Error fetching recent activity:', error);
     throw error;
   }
 };

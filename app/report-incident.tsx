@@ -1,19 +1,19 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { ActionButton } from '@/components/ActionButton';
-import { PhotoCapture } from '@/components/PhotoCapture';
-import { LocationCapture } from '@/components/LocationCapture';
 import { FormInput } from '@/components/FormInput';
+import { LocationCapture } from '@/components/LocationCapture';
 import { MangroveDetectionDemo } from '@/components/MangroveDetectionDemo';
+import { PhotoCapture } from '@/components/PhotoCapture';
+import { Colors } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { submitIncidentReport } from '@/services/firebaseService';
 import { LocationInfo } from '@/services/locationService';
-import { useAuth } from '@/contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
 import { MangroveDetectionResult } from '@/services/mangroveDetectionService';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface PhotoData {
   uri: string;
@@ -236,22 +236,12 @@ export default function ReportIncidentScreen() {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={() => router.back()}
-            >
-              <Text style={styles.backButtonText}>← Back</Text>
-            </TouchableOpacity>
-            
             {/* Logout Button - Top Right */}
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={20} color="#DC143C" />
               <Text style={styles.logoutButtonText}>Logout</Text>
             </TouchableOpacity>
             
-            <Text style={[styles.title, { color: colors.primary }]}>
-              📸 Report Incident
-            </Text>
             <Text style={[styles.subtitle, { color: colors.text }]}>
               Help us monitor and protect mangrove ecosystems
             </Text>
@@ -328,18 +318,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     position: 'relative',
   },
-  backButton: {
-    position: 'absolute',
-    top: 0,
-    left: 20,
-    padding: 10,
-    zIndex: 1,
-  },
-  backButtonText: {
-    color: '#2E8B57',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   logoutButton: {
     position: 'absolute',
     top: 0,
@@ -360,12 +338,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 4,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
+
   subtitle: {
     fontSize: 14,
     textAlign: 'center',

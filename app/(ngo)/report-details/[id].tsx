@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { getAllIncidentsForNGO } from '@/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
-import { IncidentReport } from '@/services/firebaseService';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { getAllIncidentsForNGO } from '@/services/firebaseService';
 import { formatCoordinates } from '@/services/locationService';
+import { IncidentReport } from '@/types/user';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ReportDetailsScreen() {
   const [incident, setIncident] = useState<IncidentReport | null>(null);
@@ -18,6 +18,7 @@ export default function ReportDetailsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
+  const { isDarkMode } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const formatDate = (date: Date) => {
@@ -29,28 +30,6 @@ export default function ReportDetailsScreen() {
       minute: '2-digit',
       second: '2-digit',
     }).format(date);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'resolved':
-        return '#28a745';
-      case 'reviewed':
-        return '#ffc107';
-      default:
-        return '#6c757d';
-    }
-  };
-
-  const getStatusEmoji = (status: string) => {
-    switch (status) {
-      case 'resolved':
-        return '✅';
-      case 'reviewed':
-        return '👀';
-      default:
-        return '⏳';
-    }
   };
 
   useEffect(() => {
@@ -90,200 +69,202 @@ export default function ReportDetailsScreen() {
 
   if (!user || user.role !== 'ngo') {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <ThemedView style={styles.centerContainer}>
-          <ThemedText style={styles.errorText}>Access Denied</ThemedText>
-          <ThemedText style={styles.errorSubtext}>You do not have permission to access this area.</ThemedText>
-        </ThemedView>
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={isDarkMode ? ['#0f0f23', '#1a1a2e', '#16213e'] : ['#f8f9fa', '#e9ecef', '#dee2e6']}
+          style={styles.gradientBackground}
+        >
+          <View style={styles.centerContainer}>
+            <Text style={[styles.errorText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Access Denied</Text>
+            <Text style={[styles.errorSubtext, { color: isDarkMode ? '#ccc' : '#666' }]}>You do not have permission to access this area.</Text>
+          </View>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <ThemedView style={styles.centerContainer}>
-          <ThemedText style={[styles.loadingText, { color: colors.text }]}>
-            Loading incident details...
-          </ThemedText>
-        </ThemedView>
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={isDarkMode ? ['#0f0f23', '#1a1a2e', '#16213e'] : ['#f8f9fa', '#e9ecef', '#dee2e6']}
+          style={styles.gradientBackground}
+        >
+          <View style={styles.centerContainer}>
+            <Text style={[styles.loadingText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+              Loading incident details...
+            </Text>
+          </View>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
 
   if (!incident) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <ThemedView style={styles.centerContainer}>
-          <ThemedText style={styles.errorText}>Incident Not Found</ThemedText>
-          <ThemedText style={styles.errorSubtext}>The requested incident report could not be found.</ThemedText>
-        </ThemedView>
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={isDarkMode ? ['#0f0f23', '#1a1a2e', '#16213e'] : ['#f8f9fa', '#e9ecef', '#dee2e6']}
+          style={styles.gradientBackground}
+        >
+          <View style={styles.centerContainer}>
+            <Text style={[styles.errorText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>Incident Not Found</Text>
+            <Text style={[styles.errorSubtext, { color: isDarkMode ? '#ccc' : '#666' }]}>The requested incident report could not be found.</Text>
+          </View>
+        </LinearGradient>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <ThemedView style={styles.header}>
-        <ThemedText style={[styles.title, { color: colors.text }]}>
-          📋 Incident Report Details
-        </ThemedText>
-        <ThemedText style={[styles.subtitle, { color: colors.icon }]}>
-          Report ID: {incident.id}
-        </ThemedText>
-      </ThemedView>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Status Section */}
-        <ThemedView style={styles.section}>
-          <ThemedText style={[styles.sectionTitle, { color: colors.primary }]}>
-            📊 Status Information
-          </ThemedText>
-          <View style={styles.statusRow}>
-            <ThemedText style={[styles.statusLabel, { color: colors.text }]}>Status:</ThemedText>
-            <Text style={[styles.statusValue, { color: getStatusColor(incident.status) }]}>
-              {getStatusEmoji(incident.status)} {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
-            </Text>
-          </View>
-          <View style={styles.statusRow}>
-            <ThemedText style={[styles.statusLabel, { color: colors.text }]}>Reported:</ThemedText>
-            <ThemedText style={[styles.statusValue, { color: colors.text }]}>
-              {formatDate(incident.createdAt)}
-            </ThemedText>
-          </View>
-          <View style={styles.statusRow}>
-            <ThemedText style={[styles.statusLabel, { color: colors.text }]}>Last Updated:</ThemedText>
-            <ThemedText style={[styles.statusValue, { color: colors.text }]}>
-              {formatDate(incident.updatedAt)}
-            </ThemedText>
-          </View>
-        </ThemedView>
-
-        {/* User Information */}
-        <ThemedView style={styles.section}>
-          <ThemedText style={[styles.sectionTitle, { color: colors.primary }]}>
-            👤 Reporter Information
-          </ThemedText>
-          <View style={styles.infoRow}>
-            <ThemedText style={[styles.infoLabel, { color: colors.text }]}>Name:</ThemedText>
-            <ThemedText style={[styles.infoValue, { color: colors.text }]}>
-              {incident.userName}
-            </ThemedText>
-          </View>
-          <View style={styles.infoRow}>
-            <ThemedText style={[styles.infoLabel, { color: colors.text }]}>Email:</ThemedText>
-            <ThemedText style={[styles.infoValue, { color: colors.text }]}>
-              {incident.userEmail}
-            </ThemedText>
-          </View>
-          <View style={styles.infoRow}>
-            <ThemedText style={[styles.infoLabel, { color: colors.text }]}>User ID:</ThemedText>
-            <ThemedText style={[styles.infoValue, { color: colors.text }]}>
-              {incident.userId}
-            </ThemedText>
-          </View>
-        </ThemedView>
-
-        {/* AI Validation */}
-        {incident.aiValidated !== undefined && (
-          <ThemedView style={styles.section}>
-            <ThemedText style={[styles.sectionTitle, { color: colors.primary }]}>
-              🤖 AI Validation
-            </ThemedText>
-            <View style={styles.aiValidationRow}>
-              <ThemedText style={[styles.infoLabel, { color: colors.text }]}>AI Status:</ThemedText>
-              <Text style={[
-                styles.aiValidationValue, 
-                { color: incident.aiValidated ? '#28a745' : '#dc3545' }
-              ]}>
-                {incident.aiValidated ? '✅ Validated' : '❌ Not Validated'}
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={isDarkMode ? ['#0f0f23', '#1a1a2e', '#16213e'] : ['#f8f9fa', '#e9ecef', '#dee2e6']}
+        style={styles.gradientBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => router.back()}
+            >
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.headerContent}>
+              <Text style={[styles.title, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                📋 Incident Report Details
+              </Text>
+              <Text style={[styles.subtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                Report ID: {incident.id}
               </Text>
             </View>
-            <ThemedText style={[styles.aiDescription, { color: colors.icon }]}>
-              {incident.aiValidated 
-                ? 'This image has been validated by our AI system as containing relevant environmental incident content.'
-                : 'This image has not been validated by our AI system or was flagged as potentially irrelevant.'
-              }
-            </ThemedText>
-          </ThemedView>
-        )}
-
-        {/* Description */}
-        <ThemedView style={styles.section}>
-          <ThemedText style={[styles.sectionTitle, { color: colors.primary }]}>
-            📝 Description
-          </ThemedText>
-          <ThemedText style={[styles.descriptionText, { color: colors.text }]}>
-            {incident.description}
-          </ThemedText>
-        </ThemedView>
-
-        {/* Photo */}
-        {incident.photoUrl && (
-          <ThemedView style={styles.section}>
-            <ThemedText style={[styles.sectionTitle, { color: colors.primary }]}>
-              📸 Incident Photo
-            </ThemedText>
-            <View style={styles.photoContainer}>
-              <Image source={{ uri: incident.photoUrl }} style={styles.photo} />
-            </View>
-          </ThemedView>
-        )}
-
-        {/* Location Information */}
-        <ThemedView style={styles.section}>
-          <ThemedText style={[styles.sectionTitle, { color: colors.primary }]}>
-            📍 Location Details
-          </ThemedText>
-          
-          {/* Full Address */}
-          {incident.location.fullAddress && (
-            <View style={styles.infoRow}>
-              <ThemedText style={[styles.infoLabel, { color: colors.text }]}>Full Address:</ThemedText>
-              <ThemedText style={[styles.infoValue, { color: colors.text }]}>
-                {incident.location.fullAddress}
-              </ThemedText>
-            </View>
-          )}
-
-          {/* City, State, Country */}
-          {incident.location.city && (
-            <View style={styles.infoRow}>
-              <ThemedText style={[styles.infoLabel, { color: colors.text }]}>City:</ThemedText>
-              <ThemedText style={[styles.infoValue, { color: colors.text }]}>
-                {incident.location.city}
-              </ThemedText>
-            </View>
-          )}
-          
-          {incident.location.state && (
-            <View style={styles.infoRow}>
-              <ThemedText style={[styles.infoLabel, { color: colors.text }]}>State:</ThemedText>
-              <ThemedText style={[styles.infoValue, { color: colors.text }]}>
-                {incident.location.state}
-              </ThemedText>
-            </View>
-          )}
-          
-          {incident.location.country && (
-            <View style={styles.infoRow}>
-              <ThemedText style={[styles.infoLabel, { color: colors.text }]}>Country:</ThemedText>
-              <ThemedText style={[styles.infoValue, { color: colors.text }]}>
-                {incident.location.country}
-              </ThemedText>
-            </View>
-          )}
-
-          {/* Coordinates */}
-          <View style={styles.infoRow}>
-            <ThemedText style={[styles.infoLabel, { color: colors.text }]}>Coordinates:</ThemedText>
-            <ThemedText style={[styles.coordinatesValue, { color: colors.text }]}>
-              {formatCoordinates(incident.location.latitude, incident.location.longitude)}
-            </ThemedText>
           </View>
-        </ThemedView>
-      </ScrollView>
+        </View>
+
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {/* User Information */}
+          <View style={[styles.section, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)' }]}>
+            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+              👤 Reporter Information
+            </Text>
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Name:</Text>
+              <Text style={[styles.infoValue, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                {incident.userName}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Email:</Text>
+              <Text style={[styles.infoValue, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                {incident.userEmail}
+              </Text>
+            </View>
+          </View>
+
+          {/* AI Validation */}
+          {incident.aiValidated !== undefined && (
+            <View style={[styles.section, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)' }]}>
+              <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                🤖 AI Validation
+              </Text>
+              <View style={styles.aiValidationRow}>
+                <Text style={[styles.infoLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>AI Status:</Text>
+                <Text style={[
+                  styles.aiValidationValue, 
+                  { color: incident.aiValidated ? '#28a745' : '#dc3545' }
+                ]}>
+                  {incident.aiValidated ? '✅ Validated' : '❌ Not Validated'}
+                </Text>
+              </View>
+              <Text style={[styles.aiDescription, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                {incident.aiValidated 
+                  ? 'This image has been validated by our AI system as containing relevant environmental incident content.'
+                  : 'This image has not been validated by our AI system or was flagged as potentially irrelevant.'
+                }
+              </Text>
+            </View>
+          )}
+
+          {/* Description */}
+          <View style={[styles.section, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)' }]}>
+            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+              📝 Description
+            </Text>
+            <Text style={[styles.descriptionText, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+              {incident.description}
+            </Text>
+          </View>
+
+          {/* Photo */}
+          {incident.photoUrl && (
+            <View style={[styles.section, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)' }]}>
+              <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                📸 Incident Photo
+              </Text>
+              <View style={styles.photoContainer}>
+                <Image source={{ uri: incident.photoUrl }} style={styles.photo} />
+              </View>
+            </View>
+          )}
+
+          {/* Location Information */}
+          <View style={[styles.section, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.95)' }]}>
+            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+              📍 Location Details
+            </Text>
+            
+            {/* Full Address */}
+            {incident.location.fullAddress && (
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Full Address:</Text>
+                <Text style={[styles.infoValue, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                  {incident.location.fullAddress}
+                </Text>
+              </View>
+            )}
+
+            {/* City, State, Country */}
+            {incident.location.city && (
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>City:</Text>
+                <Text style={[styles.infoValue, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                  {incident.location.city}
+                </Text>
+              </View>
+            )}
+            
+            {incident.location.state && (
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>State:</Text>
+                <Text style={[styles.infoValue, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                  {incident.location.state}
+                </Text>
+              </View>
+            )}
+            
+            {incident.location.country && (
+              <View style={styles.infoRow}>
+                <Text style={[styles.infoLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Country:</Text>
+                <Text style={[styles.infoValue, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                  {incident.location.country}
+                </Text>
+              </View>
+            )}
+
+            {/* Coordinates */}
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Coordinates:</Text>
+              <Text style={[styles.coordinatesValue, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>
+                {formatCoordinates(incident.location.latitude, incident.location.longitude)}
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
@@ -292,9 +273,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  gradientBackground: {
+    flex: 1,
+  },
   header: {
     padding: 20,
     paddingBottom: 10,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    position: 'relative',
+  },
+  backButton: {
+    padding: 10,
+    marginRight: 16,
+    marginTop: 4,
+  },
+  backButtonText: {
+    color: '#2E8B57',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  headerContent: {
+    flex: 1,
   },
   title: {
     fontSize: 24,
@@ -310,39 +312,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   section: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statusLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  statusValue: {
-    fontSize: 16,
-    fontWeight: '600',
   },
   infoRow: {
     flexDirection: 'row',

@@ -1,55 +1,93 @@
-import { Stack } from 'expo-router';
+import { Colors } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import React from 'react';
 
-export default function GovernmentLayout() {
+export default function GovernmentTabLayout() {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const { user } = useAuth();
+
+  // Redirect if not government user
+  if (!user || user.role !== 'government') {
+    return null;
+  }
+
   return (
-    <Stack>
-      <Stack.Screen 
-        name="dashboard" 
-        options={{ 
-          title: 'Government Dashboard',
-          headerShown: true,
+    <ThemeProvider>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.text,
+          tabBarStyle: {
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
+          },
           headerStyle: {
-            backgroundColor: '#2E8B57',
+            backgroundColor: colors.background,
           },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }} 
-      />
-      <Stack.Screen 
-        name="reports" 
-        options={{ 
-          title: 'Incident Reports',
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: '#2E8B57',
-          },
-          headerTintColor: '#fff',
-        }} 
-      />
-      <Stack.Screen 
-        name="analytics" 
-        options={{ 
-          title: 'Analytics & Statistics',
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: '#2E8B57',
-          },
-          headerTintColor: '#fff',
-        }} 
-      />
-      <Stack.Screen 
-        name="settings" 
-        options={{ 
-          title: 'Settings',
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: '#2E8B57',
-          },
-          headerTintColor: '#fff',
-        }} 
-      />
-    </Stack>
+          headerTintColor: colors.text,
+        }}>
+        
+        <Tabs.Screen
+          name="dashboard"
+          options={{
+            title: 'Dashboard',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'stats-chart' : 'stats-chart-outline'}
+                size={24}
+                color={color}
+              />
+            ),
+          }}
+        />
+        
+        <Tabs.Screen
+          name="reports"
+          options={{
+            title: 'Reports',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'document-text' : 'document-text-outline'}
+                size={24}
+                color={color}
+              />
+            ),
+          }}
+        />
+        
+        <Tabs.Screen
+          name="analytics"
+          options={{
+            title: 'Analytics',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'analytics' : 'analytics-outline'}
+                size={24}
+                color={color}
+              />
+            ),
+          }}
+        />
+        
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? 'settings' : 'settings-outline'}
+                size={24}
+                color={color}
+              />
+            ),
+          }}
+        />
+      </Tabs>
+    </ThemeProvider>
   );
 }

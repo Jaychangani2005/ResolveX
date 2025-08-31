@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { useAuth } from '@/contexts/AuthContext';
 import { ActionButton } from '@/components/ActionButton';
 import { IncidentReportCard } from '@/components/IncidentReportCard';
 import { UserProfileManager } from '@/components/UserProfileManager';
+import { Colors } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { getUserIncidents, IncidentReport } from '@/services/firebaseService';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,8 +28,12 @@ export default function ProfileScreen() {
 
   const loadUserIncidents = async () => {
     try {
+      if (!user?.id) {
+        console.log('User ID not available, skipping incidents load');
+        return;
+      }
       setIsLoadingIncidents(true);
-      const incidents = await getUserIncidents(user!.id);
+      const incidents = await getUserIncidents(user.id);
       setUserIncidents(incidents);
     } catch (error) {
       console.error('Error loading user incidents:', error);
